@@ -3,20 +3,20 @@
 import os
 from distutils.core import setup
 
-name = 'OdooRPC'
-version = '0.6.1'
-description = ("OdooRPC is a Python package providing an easy way to "
-               "pilot your Odoo servers through RPC.")
+name = 'OdooImport'
+version = '0.1.1'
+description = ("OdooImport is a Python package providing an easy way topush CRM/Sales/Inventory/Purcahse"
+               "data to your **Odoo** servers through `RPC` using pandas and reading data from xl files.")
 keywords = ("openerp odoo server rpc client xml-rpc xmlrpc jsonrpc json-rpc "
             "odoorpc oerplib communication lib library python "
             "service web webservice")
-author = "ABF Osiell - Sebastien Alix"
-author_email = 'sebastien.alix@osiell.com'
-url = 'http://pythonhosted.org/OdooRPC/'
-download_url = 'http://pypi.python.org/packages/source/O/OdoORPC/OdooRPC-%s.tar.gz' % version
+author = "Saboo - Ram Tangirala"
+author_email = 'ram.tangirala@gmail.com'
+#url = 'http://pythonhosted.org/OdooRPC/'
+#download_url = 'http://pypi.python.org/packages/source/O/OdoORPC/OdooRPC-%s.tar.gz' % version
 license = 'LGPL v3'
-doc_build_dir = 'doc/build'
-doc_source_dir = 'doc/source'
+#doc_build_dir = 'doc/build'
+#doc_source_dir = 'doc/source'
 
 cmdclass = {}
 command_options = {}

@@ -22,7 +22,7 @@
 This module contains Loading of Saboo specific xl sheets for odoo import
 """
 import pandas
-import saboo
+from .xls import XLS
 
 def main():
     print("Hello from main module")
@@ -39,3 +39,6 @@ def updateSaleOrders(sb):
                                     sb[so_data['ORDER REFERENCE'] == s_ord.name]['ENGINE'].values[0])
         else:
             print("ERROR : NOTHING TO DO FOR" + s_ord.name)
+
+if __name__ == '__main__':
+    client.main()

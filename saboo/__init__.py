@@ -33,6 +33,5 @@ __version__ = '0.0.1'
 from .xls import XLS
 from .odoo import Odoo
 from . import client
-if __name__ == '__main__':
-	client.main()
+
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
