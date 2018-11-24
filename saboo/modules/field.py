@@ -25,13 +25,22 @@ You can use this one to write `Python` programs that performs a variety of
 automated jobs that communicate with a `Odoo` server.
 """
 
-__author__ = 'Rammohan Tangirala'
-__email__ = 'ram.tangirala@gmail.com'
-__licence__ = 'LGPL v3'
-__version__ = '0.0.1'
+class Field(object):
+	
+	_name = 'None'
+	_xl_name = 'None'
 
-from .xls import XLS
-from .odoo import Odoo
-from . import client
-from . import modules
-# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
+	def __init__(self,name,xlname):
+		self._name = name
+		self._xl_name = xlname
+		
+	@property
+	def name(self):
+		return self._name
+
+	@property
+	def xl_name(self):
+		return self._xl_name
+	
+
+

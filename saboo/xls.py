@@ -57,18 +57,35 @@ class XLS(object):
         return copy
     @property
     def product_attribute_cols_ext(self):
-        copy = self.product_attribute_cols.insert(0,'External NAME')
+        copy = self.product_attribute_cols
+        copy.insert(0,'External NAME')
         return copy
     
     def prepare(self):
         if not self._check_order_nos:
             raise ValueError("Invalid Configuration")
-        print("Setting Up Base Data from Xl File")    
-        self._products = self.deduplicate(self.sb,self.product_attribute_cols)[self.product_attribute_cols].reset_index(drop=True).reset_index()
-        #self._products['External ID'] = self._products['index'].apply(lambda index: "product_template_"+str(index))
-        ##self._products['External NAME'] = self._products.apply(lambda df: df['NAME']+" (Prod : "+str(df['index'])+")",axis=1)
-        ##self.sb['External NAME'] = self.sb.apply(self.getProductTemplateId,axis=1)
+        print("Setting Up Product Data from Xl File")    
+        self.prepareProducts()
+        print("Setting Up Customer Data from Xl File")    
+        self.prepareCustomers()
 
+    def prepareProducts(self):
+        gp_prods = self.sb.groupby([self.sb[x].str.upper() for x in self.product_attribute_cols],sort=False)
+        prod_id = 0
+        for name,group in gp_prods:
+            self.sb.loc[group.index.values,'External NAME'] = group[:1]['NAME'].values[0]+" (Prod : "+str(prod_id)+")"
+            prod_id += 1
+        self._products = self.deduplicate(self.sb,self.product_attribute_cols)[self.product_attribute_cols_ext].reset_index(drop=True)
+    
+    def prepareCustomers(self):
+        sb = self.sb
+        sb['Customer/External ID'] = sb.reset_index()['index'].apply(lambda index: "customer_template_"+str(index))
+        sb['TEL'] = sb['TEL'].fillna("").astype('str')
+        gp_cust = sb.groupby([sb[x].str.upper() for x in self.customer_attribute_columns],sort=False)
+        for name,group in gp_cust:
+            if(group.index.size>1):
+                sb.loc[group.index.values[1:],'Customer/External ID']= sb.loc[group.index.values[:1],'Customer/External ID'].values[0]    
+    
     def deduplicate(self,sb,list_cols):
         dedup = pd.DataFrame()
         for col in list_cols:
@@ -120,8 +137,8 @@ class XLS(object):
         final = pd.DataFrame()
         for col in range(prods['NAME'].count()):
             sample = pd.DataFrame()
-            sample['Product Attributes/Attribute'] = tprod['index'][2:10].values
-            sample['Product Attributes/ Attribute Values'] = tprod[col][2:10].values
+            sample['Product Attributes/Attribute'] = tprod['index'][2:].values
+            sample['Product Attributes/ Attribute Values'] = tprod[col][2:].values
             sample.loc[0,'name'] = tprod.loc[tprod['index']=='External NAME',col].values[0]
             sample.loc[0,'External Id'] = "product_new_template_"+str(col)
             sample.loc[0,'Type'] = "Storable Product"
@@ -141,10 +158,9 @@ class XLS(object):
     def createCustomers(self):
         cust = pd.DataFrame()
         cust_template = ['CUSTOMER NAME','Mobile','Phone','Email','Street','Street2','CITY','ZIP','T/R NO','Registration number','Name','Created On','ORDER NO']
-        cust[['NAME','Mobile','Street','CITY','ZIP','Email']] = self.sb[['CNAME','TEL','ADD1','CITY','PCODE','EMAIL']]
+        cust[['NAME','Mobile','Street','CITY','ZIP','Email','External ID']] = self.sb[['CNAME','TEL','ADD1','CITY','PCODE','EMAIL','Customer/External ID']]
         cust['Street2'] = self.sb.ADD1+" "+ self.sb.ADD2
         cust = self.deduplicate(cust,['NAME','Mobile'])
-        cust['External ID'] = cust.reset_index()['index'].apply(lambda index: "customer_template_"+str(index))
         return cust
 
     def createPurchaseOrders(self):
@@ -164,10 +180,9 @@ class XLS(object):
 
     def createEnquiries(self):
         pipeline = pd.DataFrame()
-        pipeline[['Name','Created on','Expected Revenue']] = self.sb[['NAME','ORDERDATE','EXSRPRICE']]
+        pipeline[['Name','Created on','Expected Revenue','CUSTOMER/External ID']] = self.sb[['NAME','ORDERDATE','EXSRPRICE','Customer/External ID']]
         pipeline['Notes'] = self.sb['ORDERNO'].apply(lambda ord: "Order Number : " + str(ord))
         pipeline['STAGE'] = "Won"
-        pipeline['CUSTOMER/External ID'] = pipeline.reset_index()['index'].apply(lambda index: "customer_template_"+str(index))
         pipeline = self.deduplicate(pipeline,['Notes'])
         return pipeline
 
@@ -175,10 +190,9 @@ class XLS(object):
         so = pd.DataFrame()
         so_template = ['Order Date','Order Lines/Scheduled Date','Vendor Reference','Order Lines/Description','Order Lines/Product Unit Of Measure/Database ID','Order Lines/Quantity','Order Lines/Unit Price','Order Lines/Taxes /Database ID','Vendor','Order Lines/Product','Status']
         #po[['Order Date','Order Lines/Scheduled Date','Order Lines/Description','Order Lines/Product','Order Lines/Unit Price']] = sb[['ORDERDATE','ORDERDATE','NAME','NAME','BASIC']]
-        so[['Order Date','Order Lines/Product','Order Lines/Unit Price']] = self.sb[['ORDERDATE','External NAME','BASIC']]
+        so[['Order Date','Order Lines/Product','Order Lines/Unit Price','CUSTOMER/External ID']] = self.sb[['ORDERDATE','External NAME','BASIC','Customer/External ID']]
         so[['ORDER REFERENCE','Order Lines/Description']] = self.sb[['ORDERNO','NAME']]
         so['Order Lines/Quantity'] = "1"
-        so['CUSTOMER/External ID'] = so.reset_index()['index'].apply(lambda index: "customer_template_"+str(index))
         # Change to right tax value later -------
         so['Order Lines/Taxes/Database ID'] = "25"
         so['External ID'] = so.reset_index()['index'].apply(lambda index: "sale_order_template_"+str(index))

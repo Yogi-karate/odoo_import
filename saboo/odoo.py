@@ -27,8 +27,8 @@ import odoorpc as rpc
 
 class Odoo(rpc.ODOO):
 
-    def __init__(self, odoo_server='52.66.150.193', port=8069):
-        super(Odoo,self).__init__(odoo_server,port=port)
+    def __init__(self, odoo_server='52.66.150.193', port=8069,timeout=120):
+        super(Odoo,self).__init__(odoo_server,port=port,timeout=timeout)
 
 
     def approvePO(self, state):
@@ -47,16 +47,27 @@ class Odoo(rpc.ODOO):
             print("Approving Order: " + s_ord.name)
             s_ord.action_confirm()
 
-
-    def updateMoveLineWithLotNo(self, picking_ids, lot_name):
-        spick = self.env['stock.picking']
-        move_line = self.env['stock.move.line']
-        lot = self.env['stock.production.lot']
+    def updateMoveLineWithLotNo(picking_ids, lot_name):
+        spick = odoo.env['stock.picking']
+        move_line = odoo.env['stock.move.line']
+        lot = odoo.env['stock.production.lot']
         for pid in picking_ids:
             print(pid.name)
-            print(pid.move_line_ids)
+            print(pid.move_line_ids)            
             for ml in pid.move_line_ids:
                 print(ml.id)
+                print(ml.product_id.id)
                 print(ml.qty_done)
-                print(ml.lot_id)
-                ml.lot_id.name = lot_name
+                if(len(ml.lot_id) >0):
+                    print("Order already has a lot assigned")
+                    ml.lot_id.write({'name':lot_name})
+                else:
+                    print("creating lot : " + lot_name)
+                    lotId = lot.create({'name':lot_name,'product_id':ml.product_id.id})
+                    print("Lot ID : "+str(lotId))
+                    ml.lot_id = lotId
+                    print(ml.lot_id)
+                if not ml.qty_done:
+                    ml.qty_done=1        
+
+    

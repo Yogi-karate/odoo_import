@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 ##############################################################################
 #
-#    Saboo Import
+#    Saboo
 #    Copyright (C) 2014 Rammohan Tangirala.
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -18,27 +18,27 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-"""
-This module contains Loading of Saboo specific xl sheets for odoo import
-"""
-import pandas
-from .xls import XLS
+"""The `saboo` module defines the :classes:`XLS` and 'Odoo' class.
 
-def main():
-    print("Hello from main module")
+The :class:`ODOO` class is the entry point to manage `Odoo` servers using odoo RPC
+You can use this one to write `Python` programs that performs a variety of
+automated jobs that communicate with a `Odoo` server.
+"""
+
+class Module(object):
+	
     
-def updateSaleOrders(sb):
-    so = odoo.env['sale.order']
-    so_ids = so.search([('state', 'ilike', 'sale')])
-    so_data = createSaleOrders(sb)
-    for ord in so_ids:
-        s_ord = so.browse(ord)
-        if (so_data[so_data['ORDER REFERENCE'] == s_ord.name]["ORDER REFERENCE"].count() == 1):
-            print("Hello")
-            updateMoveLineWithLotNo(odoo, s_ord.picking_ids,
-                                    sb[so_data['ORDER REFERENCE'] == s_ord.name]['ENGINE'].values[0])
-        else:
-            print("ERROR : NOTHING TO DO FOR" + s_ord.name)
+	def __init__():
+		pass
 
-if __name__ == '__main__':
-    client.main()
+	def create(self,fieldsList):
+		pass
+
+	def write(self,path):
+		pass
+
+	@property
+	def get_field_list(self):
+		return self._field_list
+
+

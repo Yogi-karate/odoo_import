@@ -30,8 +30,7 @@ __email__ = 'ram.tangirala@gmail.com'
 __licence__ = 'LGPL v3'
 __version__ = '0.0.1'
 
-from .xls import XLS
-from .odoo import Odoo
-from . import client
-from . import modules
+from .module import Module
+from .field import Field
+
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
