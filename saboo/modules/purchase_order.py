@@ -24,14 +24,33 @@ The :class:`ODOO` class is the entry point to manage `Odoo` servers using odoo R
 You can use this one to write `Python` programs that performs a variety of
 automated jobs that communicate with a `Odoo` server.
 """
-
-__author__ = 'Rammohan Tangirala'
-__email__ = 'ram.tangirala@gmail.com'
-__licence__ = 'LGPL v3'
-__version__ = '0.0.1'
-
-from .module import Module
 from .field import Field
-from .purchase_order import PurchaseOrder
+from saboo import Odoo
+from saboo import XLS
+from .module import Module
 
-# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
+class PurchaseOrder(Module):
+	
+	_name = 'purchase.order'
+	_field_list = None
+	po_template = ['Order Date','Order Lines/Scheduled Date','Vendor Reference',
+					'Order Lines/Description','Order Lines/Product Unit Of Measure/Database ID',
+					'Order Lines/Quantity','Order Lines/Unit Price','Order Lines/Taxes /Database ID',
+					'Vendor','Order Lines/Product','Status']
+	def __init__():
+		pass
+
+	def create(self,fieldsList):
+		pass
+
+	def write(self,path):
+		pass
+
+	def delete(self):
+		return True
+	
+	@property
+	def get_field_list(self):
+		return self._field_list
+
+

@@ -25,18 +25,59 @@ import pandas
 import saboo
 import sys
 import logging
+import argparse
+import configparser
 
 from saboo import Odoo
+
+conf = {}
+_logger = logging.getLogger('saboo')
+config = configparser.ConfigParser()
 
 def main():
     print("Hello from main module")
     port = 8069
-    odoo_server = '52.66.204.18'
-    odoo = Odoo(odoo_server,port=port)
-    print(odoo)
-    print(sys.argv)
+    odoo_server = 'dev.saboo.me'
+    #odoo = Odoo(odoo_server,port=port)
+    #print(odoo)
+    conf = _parse_config()
+    if conf: 
+            _init_logging(conf['Logging'])
+    else:
+        raise Exception("Invalid Configuration")
+    xls = saboo.XLS(conf['xls'])
+    _logger.debug("The xl file read in is "+ str(xls.sb['ORDERNO'].count()))
+    xls.execute()        
 
-    
+def _parse_config():
+    parser = argparse.ArgumentParser(description='Odoo Import Process')
+    parser.add_argument("-c", "--conf_file",
+                        help="Specify config file", metavar="FILE")
+    args = parser.parse_args()
+    if args.conf_file:
+        config.read([args.conf_file])
+        conf = dict(config.items())
+        for key in conf:
+            print(key)
+        return conf    
+    else:
+        return False
+
+def _init_logging(conf):
+    default_format = logging.Formatter('%(asctime)s  %(name)s  %(levelname)s  %(message)s')
+    if conf['level']:
+        _logger.setLevel(conf['level'])
+    if conf['handler'] and (conf['handler'] in ['file']):
+        print("Hello")
+        handler = logging.FileHandler(conf['logfile'])
+    std_handler = logging.StreamHandler()
+    handler.setFormatter(default_format)
+    std_handler.setFormatter(default_format)
+    _logger.addHandler(handler) 
+    _logger.addHandler(std_handler)    
+    _logger.info("Say something")
+
+
 def updateSaleOrders(sb):
     so = odoo.env['sale.order']
     so_ids = so.search([('state', 'ilike', 'sale')])
@@ -72,7 +113,8 @@ def updateOrders(model,state):
         else: 
             print("ERROR - Invalid Order" + po.name)
 
-
+def learnLogging():
+    pass
 def batcher(ids,size):
     batch = {}
     start = 0

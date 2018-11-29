@@ -26,8 +26,7 @@ automated jobs that communicate with a `Odoo` server.
 """
 
 class Module(object):
-	
-    
+
 	def __init__():
 		pass
 
@@ -36,7 +35,10 @@ class Module(object):
 
 	def write(self,path):
 		pass
-
+	
+	def delete(self):
+		return True
+	
 	@property
 	def get_field_list(self):
 		return self._field_list

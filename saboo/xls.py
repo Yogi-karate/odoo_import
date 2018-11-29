@@ -21,19 +21,28 @@
 """
 This module contains Loading of Saboo specific xl sheets for odoo import
 """
+import os
 import pandas as pd
 import numpy as np
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class XLS(object):
     sb = None
     xlsx = None
-    _attribute_cols = ['SEATING','CAPACITY','FUEL','CYLINDER','UWEIGHT','TYPE','WBASE','COLOR']
+    _attribute_cols = ['COLOR']
     _customer_attribute_columns = ['CNAME','TEL']
     _products = None
+    modules = {1:'attributes',2:'products',3:'customers',4:'purchase_orders',5:'sale_orders',6:'enquiries'}
+    _valid = True
 
-    def __init__(self, saboo_path='/Users/tramm/saboo/analysis/Saboo_Suzuki_Data/Saboo_data.xlsx',
+    def __init__(self, conf,saboo_path='Saboo_data.xlsx',
                  sheet='Sale'):
-        self.xlsx = pd.ExcelFile(saboo_path)
+        if conf:
+            self.conf = conf
+            self.path = conf['xl_file']
+        self.xlsx = pd.ExcelFile(self.path or saboo_path)
         self.sb = pd.read_excel(self.xlsx, 'Sale')
         self.prepare()
     
@@ -60,14 +69,40 @@ class XLS(object):
         copy = self.product_attribute_cols
         copy.insert(0,'External NAME')
         return copy
-    
+   
+    def write(self,df,filename):
+        df.to_csv(self._output_dir+filename+'.csv')
+
+    def _validate(self):
+        sb = self.sb
+        self._errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna()]
+        if(len(self._errored.index)>0):
+            _logger.error("Sheet has " + str(len(self._errored.index))+" invalid records")
+            self.sb = sb.drop(self._errored.index.values)
+            self.write(self._errored,'errors')
+        else:   
+            return True
+
     def prepare(self):
+        output_dir = self.conf['output']
+        op = os.path.join(output_dir,self.conf['version'])
+        if op and not os.path.isdir(op):
+            os.makedirs(op)
+        _logger.debug("The outut directory is"+op) 
+        self._output_dir = op+'/'
         if not self._check_order_nos:
             raise ValueError("Invalid Configuration")
-        print("Setting Up Product Data from Xl File")    
-        self.prepareProducts()
-        print("Setting Up Customer Data from Xl File")    
-        self.prepareCustomers()
+        self._original = self.sb.copy()
+        _logger.debug("ignore errors value"+self.conf['ignore_errors'])
+        if self._validate() or self.conf['ignore_errors'] == '1':
+            _logger.debug("Setting Up Product Data from Xl File")    
+            self.prepareProducts()
+            _logger.debug("Setting Up Customer Data from Xl File")    
+            self.prepareCustomers()
+        else:
+            _logger.error("Error in processing the xl file. Please fix and retry")
+            self._valid = False
+
 
     def prepareProducts(self):
         gp_prods = self.sb.groupby([self.sb[x].str.upper() for x in self.product_attribute_cols],sort=False)
@@ -102,24 +137,15 @@ class XLS(object):
             return False
         else:
             return True
-    def execute(self,path):
-        if path:
-            self.createAttributes().to_csv(path+'saboo_attributes.csv')
-            print("Completed Attributes Import File")
-            self.createProducts().to_csv(path+'saboo_products.csv')
-            print("Completed Products Import File")
-            self.createCustomers().to_csv(path+'saboo_customers.csv')
-            print("Completed Customers Import File")
-            self.createEnquiries().to_csv(path+'saboo_enquiries.csv')
-            print("Completed Enquiries Import File")
-            self.createPurchaseOrders().to_csv(path+'saboo_purchase.csv')
-            print("Completed Customers Import File")
-            self.createSaleOrders().to_csv(path+'saboo_sale_order.csv')
-            print("Completed Sale Order Import File")
+    def execute(self):
+        if self._valid:
+            for key in self.modules.keys():
+                module = self.modules[key]
+                self.write(getattr(self,'create_'+module)(),module)
         else:
-            raise Exception("Cannot execute without Location")
+            _logger.error("Cannot execute with invalid data")
 
-    def createAttributes(self):
+    def create_attributes(self):
         attribs = self._products
         final = pd.DataFrame()
         for col in self.attribute_cols:
@@ -130,7 +156,7 @@ class XLS(object):
             final = pd.concat([final,af])
         return final
 
-    def createProducts(self):
+    def create_products(self):
         template_cols = ['External ID','Name','Product Attributes/ Attribute Values','Product Attributes/Attribute','Type','Tracking']
         prods = self._products
         tprod = prods.T.reset_index()
@@ -155,7 +181,7 @@ class XLS(object):
         else:
             return self._products.iloc[index[0]]['External NAME']
 
-    def createCustomers(self):
+    def create_customers(self):
         cust = pd.DataFrame()
         cust_template = ['CUSTOMER NAME','Mobile','Phone','Email','Street','Street2','CITY','ZIP','T/R NO','Registration number','Name','Created On','ORDER NO']
         cust[['NAME','Mobile','Street','CITY','ZIP','Email','External ID']] = self.sb[['CNAME','TEL','ADD1','CITY','PCODE','EMAIL','Customer/External ID']]
@@ -163,7 +189,7 @@ class XLS(object):
         cust = self.deduplicate(cust,['NAME','Mobile'])
         return cust
 
-    def createPurchaseOrders(self):
+    def create_purchase_orders(self):
         po = pd.DataFrame()
         po_template = ['Order Date','Order Lines/Scheduled Date','Vendor Reference','Order Lines/Description','Order Lines/Product Unit Of Measure/Database ID','Order Lines/Quantity','Order Lines/Unit Price','Order Lines/Taxes /Database ID','Vendor','Order Lines/Product','Status']
         #po[['Order Date','Order Lines/Scheduled Date','Order Lines/Description','Order Lines/Product','Order Lines/Unit Price']] = sb[['ORDERDATE','ORDERDATE','NAME','NAME','BASIC']]
@@ -178,7 +204,7 @@ class XLS(object):
         po['External ID'] = po.reset_index()['index'].apply(lambda index: "purchase_template_"+str(index))
         return po
 
-    def createEnquiries(self):
+    def create_enquiries(self):
         pipeline = pd.DataFrame()
         pipeline[['Name','Created on','Expected Revenue','CUSTOMER/External ID']] = self.sb[['NAME','ORDERDATE','EXSRPRICE','Customer/External ID']]
         pipeline['Notes'] = self.sb['ORDERNO'].apply(lambda ord: "Order Number : " + str(ord))
@@ -186,7 +212,7 @@ class XLS(object):
         pipeline = self.deduplicate(pipeline,['Notes'])
         return pipeline
 
-    def createSaleOrders(self):
+    def create_sale_orders(self):
         so = pd.DataFrame()
         so_template = ['Order Date','Order Lines/Scheduled Date','Vendor Reference','Order Lines/Description','Order Lines/Product Unit Of Measure/Database ID','Order Lines/Quantity','Order Lines/Unit Price','Order Lines/Taxes /Database ID','Vendor','Order Lines/Product','Status']
         #po[['Order Date','Order Lines/Scheduled Date','Order Lines/Description','Order Lines/Product','Order Lines/Unit Price']] = sb[['ORDERDATE','ORDERDATE','NAME','NAME','BASIC']]

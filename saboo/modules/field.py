@@ -26,14 +26,11 @@ automated jobs that communicate with a `Odoo` server.
 """
 
 class Field(object):
-	
-	_name = 'None'
-	_xl_name = 'None'
 
 	def __init__(self,name,xlname):
 		self._name = name
 		self._xl_name = xlname
-		
+
 	@property
 	def name(self):
 		return self._name
