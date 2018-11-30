@@ -113,8 +113,6 @@ def updateOrders(model,state):
         else: 
             print("ERROR - Invalid Order" + po.name)
 
-def learnLogging():
-    pass
 def batcher(ids,size):
     batch = {}
     start = 0
