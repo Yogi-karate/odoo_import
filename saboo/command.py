@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 ##############################################################################
 #
-#    Saboo
+#    Saboo Import
 #    Copyright (C) 2014 Rammohan Tangirala.
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -18,23 +18,39 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-"""The `saboo` module defines the :classes:`XLS` and 'Odoo' class.
-
-The :class:`ODOO` class is the entry point to manage `Odoo` servers using odoo RPC
-You can use this one to write `Python` programs that performs a variety of
-automated jobs that communicate with a `Odoo` server.
 """
+This module contains Loading of Saboo specific xl sheets for odoo import
+"""
+import pandas
+import saboo
+import sys
+import logging
 
-__author__ = 'Rammohan Tangirala'
-__email__ = 'ram.tangirala@gmail.com'
-__licence__ = 'LGPL v3'
-__version__ = '0.0.1'
 
-from .xls import XLS
-from .odoo import Odoo
-from . import client
-from .client import Command
-from . import command
+from saboo import Odoo
+from . import Command
+_logger = logging.getLogger(__name__)
 
-from . import modules
-# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
+class Xls(Command):
+    command = 'xls'
+    def run(self,conf):
+        if  conf['xls']:
+            xls = saboo.XLS(conf['xls'])
+            _logger.debug("The xl file read in is "+ str(xls.sb['ORDERNO'].count()))
+            xls.execute()  
+
+class SaleConfirm(Command):
+    def run(self,conf):
+        pass
+
+class PurchaseConfirm(Command):
+    def run(self,conf):
+        pass
+
+class PurchaseInventory(Command):
+    def run(self,conf):
+        pass
+
+class SaleInventory(Command):
+    def run(self,conf):
+        pass

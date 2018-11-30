@@ -21,7 +21,7 @@
 """
 This module contains Loading of Saboo specific xl sheets for odoo import
 """
-import pandas
+
 import saboo
 import sys
 import logging
@@ -33,27 +33,50 @@ from saboo import Odoo
 conf = {}
 _logger = logging.getLogger('saboo')
 config = configparser.ConfigParser()
+commands = {}
+
+class CommandType(type):
+    def __init__(cls, name, bases, attrs):
+        super(CommandType, cls).__init__(name, bases, attrs)
+        name = getattr(cls, name, cls.__name__.lower())
+        cls.name = name
+        if name != 'command':
+            commands[name] = cls
+
+# Base Command Class Definition
+Command = CommandType('Command', (object,), {'run': lambda self, args: None})
 
 def main():
-    print("Hello from main module")
-    port = 8069
-    odoo_server = 'dev.saboo.me'
-    #odoo = Odoo(odoo_server,port=port)
-    #print(odoo)
     conf = _parse_config()
     if conf: 
             _init_logging(conf['Logging'])
     else:
         raise Exception("Invalid Configuration")
-    xls = saboo.XLS(conf['xls'])
-    _logger.debug("The xl file read in is "+ str(xls.sb['ORDERNO'].count()))
-    xls.execute()        
+    for command in _parse_commands():
+        _logger.debug("The command to execute is "+command)
+        o = commands[command]()
+        _logger.debug("The command to execute is "+str(o))
+        o.run(conf)
+    _logger.debug("The modules are "+ conf['Modules']['name'])  
+
+          
+def _parse_commands():
+    commands = []
+    # check if args has 
+    command_args = sys.argv[3:]
+    if len(command_args) and command_args[0] and command_args[0].startswith('--'):
+        _logger.debug("the command is "+command_args[0])
+        commands.append('xls')
+    else:
+        commands.append('xls')
+        _logger.info("No command given - so executing default xls import command" + str(commands))
+    return commands
 
 def _parse_config():
     parser = argparse.ArgumentParser(description='Odoo Import Process')
     parser.add_argument("-c", "--conf_file",
                         help="Specify config file", metavar="FILE")
-    args = parser.parse_args()
+    args,other_args = parser.parse_known_args()
     if args.conf_file:
         config.read([args.conf_file])
         conf = dict(config.items())
