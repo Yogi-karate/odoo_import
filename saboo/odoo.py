@@ -22,52 +22,76 @@
 This module contains Loading of Saboo specific xl sheets for odoo import
 """
 
+import logging
 import odoorpc as rpc
+import saboo.tools as tools
 
+_logger = logging.getLogger(__name__)
 
 class Odoo(rpc.ODOO):
 
-    def __init__(self, odoo_server='52.66.150.193', port=8069,timeout=120):
+    def __init__(self, conf):
+        if not conf or not conf['server_name'] or not conf['port']:
+            _logger.error("Invalid Configuration")
+            raise Exception(" Cannot connect to Odoo instance")
+        self.conf = conf
+        odoo_server = conf['server_name']
+        port = conf['port']
+        timeout = conf['timeout']
         super(Odoo,self).__init__(odoo_server,port=port,timeout=timeout)
+        self.initialize()
 
+    def connect(self):
+        conf = self.conf
+        username = conf['user_name']
+        password = conf['password']
+        database = conf['database']
+        self.login(database,username,password)
 
-    def approvePO(self, state):
-        Order = self.env['purchase.order']
-        ids = Order.search([('state', 'ilike', state)])
-        for ord in ids:
-            for po in Order.browse(ord):
-                print("Approving Order: " + po.name)
-                po.button_approve()
+    def deleteModels(self,names):
+        # Naive implementation to delete all in one go - change later
+        odoo = self
+        if not odoo:
+            _logger.error("Cannot delete objects - invalid config")
+        for name in names:    
+            _logger.info("Deleting models of "+ name)
+            if name in ['customer']:
+                _name = 'res.partner'
+                criteria = [('customer','=',True)]
+            elif name in ['vendor']:
+                _name = 'res.partner'
+                criteria = [('supplier','=',True)]
+            else:    
+                _name = name
+                criteria = []
+            model = odoo.env[_name]
+            ids = model.search(criteria)
+            _logger.info("Number of Models to be deleted - "+str(len(ids)))
+            if len(ids) > 2000:
+                _logger.info("Number of Models to be deletedis high - running in batches - Hang on ....")
+                batches = tools.batcher(ids,2000)
+                _logger.debug(len(batches.keys()))
+                _logger.info("Number of Models to be deleted is high - running in batches - Hang on .... batch size is 2000")
+                for counter in batches.keys():
+                    partial = ids[batches[counter][0]:batches[counter][1]]
+                    if _name == 'purchase.order':
+                        odoo.execute_kw(name,'button_cancel',[partial])
+                    odoo.execute_kw(_name,'unlink',[partial])
+            else:   
+                if _name == 'purchase.order':
+                    odoo.execute_kw(name,'button_cancel',[ids])
+                odoo.execute_kw(_name,'unlink',[ids])
 
-    def approveSaleOrder(self, state):
-        Order = self.env['sale.order']
-        ids = Order.search([('state', 'ilike', state)])
-        for ord in ids:
-            s_ord = order.browse(ord)
-            print("Approving Order: " + s_ord.name)
-            s_ord.action_confirm()
+    def initialize(self):
+        _logger.debug("Initializing Odoo instance")
+        try:
+            self.connect()
+        except Exception:
+            _logger.error("Invalid Odoo config")
+            return
+        _logger.info("Deleting models in order before staring import process")
+        self.deleteModels(['purchase.order','vendor','customer','product.template','product.attribute'])
+        _logger.info(" Finished Deleting models")
 
-    def updateMoveLineWithLotNo(picking_ids, lot_name):
-        spick = odoo.env['stock.picking']
-        move_line = odoo.env['stock.move.line']
-        lot = odoo.env['stock.production.lot']
-        for pid in picking_ids:
-            print(pid.name)
-            print(pid.move_line_ids)            
-            for ml in pid.move_line_ids:
-                print(ml.id)
-                print(ml.product_id.id)
-                print(ml.qty_done)
-                if(len(ml.lot_id) >0):
-                    print("Order already has a lot assigned")
-                    ml.lot_id.write({'name':lot_name})
-                else:
-                    print("creating lot : " + lot_name)
-                    lotId = lot.create({'name':lot_name,'product_id':ml.product_id.id})
-                    print("Lot ID : "+str(lotId))
-                    ml.lot_id = lotId
-                    print(ml.lot_id)
-                if not ml.qty_done:
-                    ml.qty_done=1        
 
     

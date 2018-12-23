@@ -33,5 +33,9 @@ __version__ = '0.0.1'
 from .module import Module
 from .field import Field
 from .purchase_order import PurchaseOrder
+from .product_attributes import ProductAttributes
+from .product import ProductTemplate
+from .product import ProductProduct
+from .customer import Customer,Vendor,Lead
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

@@ -27,6 +27,7 @@ import sys
 import logging
 import argparse
 import configparser
+from . import config as globals
 
 from saboo import Odoo
 
@@ -47,9 +48,11 @@ class CommandType(type):
 Command = CommandType('Command', (object,), {'run': lambda self, args: None})
 
 def main():
-    conf = _parse_config()
+    print("The args = " + str(sys.argv))
+    conf = _parse_config(sys.argv)
     if conf: 
             _init_logging(conf['Logging'])
+            _init_odoo(conf)
     else:
         raise Exception("Invalid Configuration")
     for command in _parse_commands():
@@ -59,7 +62,7 @@ def main():
         o.run(conf)
     _logger.debug("The modules are "+ conf['Modules']['name'])  
 
-          
+
 def _parse_commands():
     commands = []
     # check if args has 
@@ -72,11 +75,11 @@ def _parse_commands():
         _logger.info("No command given - so executing default xls import command" + str(commands))
     return commands
 
-def _parse_config():
+def _parse_config(sysconf):
     parser = argparse.ArgumentParser(description='Odoo Import Process')
     parser.add_argument("-c", "--conf_file",
                         help="Specify config file", metavar="FILE")
-    args,other_args = parser.parse_known_args()
+    args,other_args = parser.parse_known_args(sysconf)
     if args.conf_file:
         config.read([args.conf_file])
         conf = dict(config.items())
@@ -100,6 +103,9 @@ def _init_logging(conf):
     _logger.addHandler(std_handler)    
     _logger.info("Say something")
 
+def _init_odoo(conf):
+    globals.odoo_conf['instance'] = Odoo(conf['odoo'])
+    #conf['odoo']['instance'] = odoo
 
 def updateSaleOrders(sb):
     so = odoo.env['sale.order']

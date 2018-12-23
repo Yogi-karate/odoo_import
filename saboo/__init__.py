@@ -32,9 +32,11 @@ __version__ = '0.0.1'
 
 from .xls import XLS
 from .odoo import Odoo
+from . import tools
 from . import client
 from .client import Command
 from . import command
+from . import inventory_command
 
 from . import modules
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

@@ -25,8 +25,7 @@ You can use this one to write `Python` programs that performs a variety of
 automated jobs that communicate with a `Odoo` server.
 """
 from .field import Field
-from saboo import Odoo
-from saboo import XLS
+import saboo
 from .module import Module
 
 class PurchaseOrder(Module):
