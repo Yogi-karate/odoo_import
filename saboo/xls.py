@@ -25,6 +25,7 @@ import os
 import pandas as pd
 import numpy as np
 import logging
+from datetime import datetime
 
 import saboo.modules as modules
 
@@ -33,23 +34,40 @@ _logger = logging.getLogger(__name__)
 class XLS(object):
     sb = None
     xlsx = None
+    _product_columns = {'NAME':str}
+    _attribute_columns = {'COLOR':str}
     _attribute_cols = ['COLOR']
-    _customer_attribute_columns = {'CNAME':str,'TEL':str,'ADD1':str,'CITY':str,'PCODE':str,'EMAIL':str}
+    _customer_attribute_columns = ['CNAME','TEL']
+    _customer_columns = {'CNAME':str,'TEL':str,'ADD1':str,'CITY':str,'PCODE':str,'EMAIL':str}
     _products = None
-    modules = {1:'attributes',2:'products',3:'customers',4:'purchase_orders',5:'sale_orders',6:'enquiries'}
+   # modules = {1:'attributes',2:'products',3:'purchase_orders',4:'customers',5:'sale_orders',6:'enquiries'}
     _valid = True
     _mode = 'manual'
     
     def __init__(self, conf,saboo_path='Saboo_data.xlsx',
                  sheet='Sale'):
-        if conf:
+        if conf and conf['xls'] and conf['Modules']['name']:
             self.conf = conf
             self.path = conf['xls']['xl_file']
+            self.modules = conf['Modules']['name'].split(",")
+        else:
+            _logger.error("Invalid Configuration - Cannot execute")    
         self.xlsx = pd.ExcelFile(self.path or saboo_path)
-        self.sb = pd.read_excel(self.xlsx, 'Sale',converters = self._customer_attribute_columns)
+        self.original = pd.read_excel(self.xlsx, 'Sale',converters = self.get_all_columns())
+        self.sb = self.original[:10000]
         self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
         self.prepare()
     
+    def get_all_columns(self):
+        # need to dynamically load all fields - to do - CHANGE this !!!!
+        #print(dict(self._product_columns.items()+self._attribute_columns.items()))
+        all_cols = {}
+        all_cols.update(self._product_columns)
+        all_cols.update(self._attribute_columns)
+        all_cols.update(self._customer_columns)
+        #all_cols = dict(self._product_columns.items()+self._attribute_columns.items()+self._customer_columns.items())
+        return all_cols
+
     @property
     def customer_attribute_columns(self):
         return self._customer_attribute_columns
@@ -78,7 +96,7 @@ class XLS(object):
         if df is not None:
             df.to_csv(self._output_dir+filename+'.csv')
         else:
-            _logger.debug("Noting to write")
+            _logger.debug("Nothing to write")
 
     def _validate(self):
         sb = self.sb
@@ -107,24 +125,32 @@ class XLS(object):
             _logger.debug("Setting Up Product Data from Xl File")    
             self.prepareProducts()
             _logger.debug("Setting Up Customer Data from Xl File")    
-            #self.prepareCustomers()
+            self.prepareCustomers()
         else:
             _logger.error("Error in processing the xl file. Please fix and retry")
             self._valid = False
 
 
     def prepareProducts(self):
-        gp_prods = self.sb.groupby([self.sb[x].str.upper() for x in self.product_attribute_cols],sort=False)
+        gp_prods = self.sb.groupby([self.sb[x].str.upper() for x in self.product_attribute_cols])
         prod_id = 0
+        self._products = pd.DataFrame()
         for name,group in gp_prods:
+            print(name)
             self.sb.loc[group.index.values,'External NAME'] = str(prod_id)
+            temp = self.sb.loc[group.index.values[:1],self.product_attribute_cols_ext]
+            if self._products.empty:
+                self._products = temp
+            else:    
+                self._products = pd.concat([self._products,temp])
             prod_id += 1
-        self._products = self.deduplicate(self.sb,self.product_attribute_cols)[self.product_attribute_cols_ext].reset_index(drop=True)
+        _logger.debug(self._products)
+
     
     def prepareCustomers(self):
         sb = self.sb
         sb['Customer/External ID'] = sb.reset_index()['index'].apply(lambda index: "customer_template_"+str(index))
-        sb['TEL'] = sb['TEL'].fillna("").astype('str')
+        #sb['TEL'] = sb['TEL'].fillna("").astype('str')
         gp_cust = sb.groupby([sb[x].str.upper() for x in self.customer_attribute_columns],sort=False)
         for name,group in gp_cust:
             if(group.index.size>1):
@@ -148,21 +174,27 @@ class XLS(object):
             return True
     def execute(self):
         if self._valid:
-            for key in self.modules.keys():
-                module = self.modules[key]
+            _logger.info("Processing "+str(self.sb['ORDERNO'].count())+" Records")
+            _logger.info("The modules to be executed are " + str(self.modules) + " in mode " + self._mode)
+            for module in self.modules:
+               # module = self.modules[key]
                 method = 'create_'+module
                 if self._mode is 'manual':
                     method  = method+'_manual'
+                _logger.info("START CREATING ---> "+module.upper())
+                start = datetime.now()    
                 self.write(getattr(self,method)(),module)
+                finish = datetime.now() - start
+                finish_time = int(finish.total_seconds()/60)
+                _logger.info("END CREATING ---> "+module.upper() + " - Finished in - "+str(finish_time if finish_time >0 else finish.total_seconds()))
         else:
             _logger.error("Cannot execute with invalid data")
     
     def create_attributes(self):
-        _logger.debug("START CREATING ATRTRIBUTES")
         attributes = modules.ProductAttributes(self.conf)
         prods = self._products
         self.attribute_values = attributes.create({attribute:prods.loc[prods.duplicated(attribute)<1,attribute].values for attribute in self.attribute_cols},None)
-        _logger.debug("END CREATING ATRTRIBUTES")
+        _logger.info("Number of attributes created --> "+str(len(self.attribute_values)))
 
 
     def create_attributes_manual(self):
@@ -188,7 +220,7 @@ class XLS(object):
 
     def create_products(self):
         prod_templates = []
-        gp_prods = self._products.groupby([self._products['NAME'].str.upper()],sort=False)
+        gp_prods = self._products.groupby([self._products['NAME'].str.upper()])
         for name,group in gp_prods:
             template = {'name':name,'values':[(x,group[x].values) for x in self.attribute_cols]}
             prod_templates.append(template)
@@ -206,11 +238,13 @@ class XLS(object):
         sb = self.sb
         product_product = modules.ProductProduct(self.conf)
         prods['Product ID'] = product_product.get_product_product_list(None)
-        gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_cols],sort=False)
+        gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_cols])
         prod_id = 0
         for name,group in gp_prods:
+            print(name)
+            print(group[self.product_attribute_cols])
             self.sb.loc[group.index.values,'External NAME'] = prods[prods['External NAME'] == group[:1]['External NAME'].values[0]]['Product ID'].values
-
+            print(self.sb.loc[group.index.values,'External NAME'].values)    
             
     def create_products_manual(self):
         template_cols = ['External ID','Name','Product Attributes/ Attribute Values','Product Attributes/Attribute','Type','Tracking']
@@ -239,14 +273,22 @@ class XLS(object):
 
     def create_customers(self):
         cust = pd.DataFrame()
-        cust[['name','mobile','street','city','zip','email']] = self.sb[['CNAME','TEL','ADD1','CITY','PCODE','EMAIL']]
+        cust[['name','mobile','street','city','zip','email','Customer/External ID']] = self.sb[['CNAME','TEL','ADD1','CITY','PCODE','EMAIL','Customer/External ID']]
         cust['street2'] = self.sb.ADD1.astype('str')+" "+ self.sb.ADD2.astype('str')
         cust['customer'] = True
         cust = self.deduplicate(cust,['name','mobile'])
         customer = modules.Customer(self.conf)
         ids = customer.create(cust.to_dict(orient='records'),None)
-        self.sb['Customer ID'] = ids
-        return cust
+        _logger.debug(len(ids))
+        _logger.debug(cust['name'].count())
+        cust['Customer ID'] = ids
+        self.update_customer_id(cust)
+    
+    def update_customer_id(self,cust):
+        gp_cust = self.sb.groupby([self.sb[x].str.upper() for x in self.customer_attribute_columns],sort=False)
+        for name,group in gp_cust:
+            self.sb.loc[group.index.values,'Customer/External ID'] = cust[cust['Customer/External ID'] == group[:1]['Customer/External ID'].values[0]]['Customer ID'].values
+        _logger.debug(self.sb['Customer/External ID'][:100].values)    
 
     def create_customers_manual(self):
         cust = pd.DataFrame()
@@ -257,19 +299,22 @@ class XLS(object):
         return cust
     
     def create_vendors(self):
-        if self.vendor_master:    
-            _logger.info(vendor_master['NAME'].count())
-            vendor = modules.Vendor(conf)
-            self.vendor_id = vendor.create(record,None)
+        _logger.debug("START CREATING VENDORS")
+        if not self.vendor_master.empty:    
+            _logger.info(self.vendor_master['name'].count())
+            vendor = modules.Vendor(self.conf)
+            self.vendor_id = vendor.create(self.vendor_master.to_dict(orient = 'records'),None)
+            _logger.debug("END CREATING VENDORS")
             return self.vendor_id
+        _logger.debug("END CREATING VENDORS")
         return True
 
         
     def create_purchase_orders(self):
         id = self.create_vendors()
-        _logger.debug("The vendor id is "+id)
+        _logger.debug("The vendor id is "+str(id))
         if id:
-            self.create_purchase_orders_manual()
+            return self.create_purchase_orders_manual()
 
     def create_purchase_orders_manual(self):    
         po = pd.DataFrame()
@@ -285,13 +330,13 @@ class XLS(object):
         po['Order Lines/Taxes/Database ID'] = "53"
         po['External ID'] = po.reset_index()['index'].apply(lambda index: "purchase_template_"+str(index))
         return po
+    
     def create_enquiries(self):
-        
-        return self.create_enquiries_manual
+        return self.create_enquiries_manual()
         
     def create_enquiries_manual(self):
         pipeline = pd.DataFrame()
-        pipeline[['Name','Created on','Expected Revenue','CUSTOMER/External ID']] = self.sb[['NAME','ORDERDATE','EXSRPRICE','Customer/External ID']]
+        pipeline[['Name','Created on','Expected Revenue','CUSTOMER/Database ID']] = self.sb[['NAME','ORDERDATE','EXSRPRICE','Customer/External ID']]
         pipeline['Notes'] = self.sb['ORDERNO'].apply(lambda ord: "Order Number : " + str(ord))
         pipeline['STAGE'] = "Won"
         pipeline = self.deduplicate(pipeline,['Notes'])
@@ -301,11 +346,11 @@ class XLS(object):
         so = pd.DataFrame()
         so_template = ['Order Date','Order Lines/Scheduled Date','Vendor Reference','Order Lines/Description','Order Lines/Product Unit Of Measure/Database ID','Order Lines/Quantity','Order Lines/Unit Price','Order Lines/Taxes /Database ID','Vendor','Order Lines/Product','Status']
         #po[['Order Date','Order Lines/Scheduled Date','Order Lines/Description','Order Lines/Product','Order Lines/Unit Price']] = sb[['ORDERDATE','ORDERDATE','NAME','NAME','BASIC']]
-        so[['Order Date','Order Lines/Product/Database ID','Order Lines/Unit Price','CUSTOMER/External ID']] = self.sb[['ORDERDATE','External NAME','BASIC','Customer/External ID']]
+        so[['Order Date','Order Lines/Product/Database ID','Order Lines/Unit Price','CUSTOMER/Database ID']] = self.sb[['ORDERDATE','External NAME','BASIC','Customer/External ID']]
         so[['ORDER REFERENCE','Order Lines/Description']] = self.sb[['ORDERNO','NAME']]
         so['Order Lines/Quantity'] = "1"
         # Change to right tax value later -------
         so['Order Lines/Taxes/Database ID'] = "25"
         so['External ID'] = so.reset_index()['index'].apply(lambda index: "sale_order_template_"+str(index))
-        so = self.deduplicate(so,['ORDER REFERENCE'])
+        #so = self.deduplicate(so,['ORDER REFERENCE'])
         return so

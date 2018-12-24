@@ -104,7 +104,9 @@ def _init_logging(conf):
     _logger.info("Say something")
 
 def _init_odoo(conf):
-    globals.odoo_conf['instance'] = Odoo(conf['odoo'])
+    odoo = Odoo(conf['odoo'])
+    odoo.initialize()
+    globals.odoo_conf['instance'] = odoo
     #conf['odoo']['instance'] = odoo
 
 def updateSaleOrders(sb):

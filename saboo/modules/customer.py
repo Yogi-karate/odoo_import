@@ -29,6 +29,8 @@ import saboo.tools as tools
 from .module import Module
 import pandas as pd
 import logging
+import threading
+
 
 _logger = logging.getLogger(__name__)
 
@@ -40,22 +42,39 @@ class Customer(Module):
         if not conf['attributes'] or not conf['odoo']:
             raise Exception("Cannot create attributes")
         self.conf = conf
-
+        self.max_records = int(conf['customers']['max_records'])
+        self.batch_size = int(conf['customers']['batch_size'])
+    
+    def get_customer_list(self):
+        odoo = tools.login(self.conf['odoo'])
+        self.model = odoo.env[self._name]
+        ids = model.search([('customer','=',True)])
+        ids.sort()
+        return ids
+            
     def create(self,customers,odoo):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
-        print(customers)
-        batches = tools.batcher(customers,2000)
-        _logger.debug(len(batches.keys()))
         all_ids=[]
-        for counter in batches.keys():
-            partial = customers[batches[counter][0]:batches[counter][1]]
-            ids = self.model.create(partial)
-            all_ids = all_ids+ids
-            print(ids)
-        all_ids.sort()    
-        return all_ids
+        if len(customers) > self.max_records:
+            thread_list = {}
+            batches = tools.batcher(customers,self.batch_size)
+            _logger.debug("Number OF Batches is "+str(len(batches.keys())))
+            for counter in batches.keys():
+                _logger.debug("Running Batch no : " + str(counter+1))
+                partial = customers[batches[counter][0]:batches[counter][1]]
+                thread = CustomerThread("Thread-"+str(counter),self._name,self.conf,partial)
+                thread_list[counter] = thread
+            # Start new Threads
+            for key in thread_list.keys():
+                thread_list[key].start()
+            for key in thread_list.keys():
+                thread_list[key].join()
+            _logger.info("Exiting Main Thread")
+        else:
+             self.model.create(customers)
+        return self.get_customer_list()
 
     def write(self,path):
         pass
@@ -63,6 +82,32 @@ class Customer(Module):
     @property
     def get_field_list(self):
         return self._field_list
+
+class CustomerThread(threading.Thread):
+
+    def __init__(self,thread_name,model_name,conf,customers):
+        threading.Thread.__init__(self)
+        self.conf = conf
+        self.customers = customers
+        self.batch_size = int(conf['customers']['max_thread_records'])
+        self.name = thread_name
+        self.model_name = model_name
+
+    def run(self):
+        _logger.info("Starting " + self.name)
+        self.create_customers()
+        _logger.info("Exiting " + self.name)
+    
+    def create_customers(self):
+        odoo = Odoo(self.conf['odoo'])
+        odoo.connect()
+        model = odoo.env[self.model_name]
+        customers = self.customers
+        batches = tools.batcher(customers,self.batch_size)
+        for counter in batches.keys():
+            _logger.debug("Running Batch no : " + str(counter+1))
+            partial = customers[batches[counter][0]:batches[counter][1]]
+            ids = self.model.create(partial)
 
 class Vendor(Customer):
 
@@ -75,11 +120,12 @@ class Vendor(Customer):
         if not values or len(values) < 1:
             return
         for vendor in values:
-            if not vendor['supplier'] == True or not vendor['is_company'] == 'True':
-                print("Invalid Vendor values - creation FAILED")
-                return
-        model = odoo.env[self._name]
-        model.create(values)
+            vendor['supplier'] = True
+            vendor['is_company'] = True
+            model = odoo.env[self._name]
+            ids = model.create(values)
+            ids.sort()
+            return ids
 
 class Lead(Module):
     def __init__(self,conf):

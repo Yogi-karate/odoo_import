@@ -39,7 +39,6 @@ class Odoo(rpc.ODOO):
         port = conf['port']
         timeout = conf['timeout']
         super(Odoo,self).__init__(odoo_server,port=port,timeout=timeout)
-        self.initialize()
 
     def connect(self):
         conf = self.conf
@@ -67,9 +66,9 @@ class Odoo(rpc.ODOO):
             model = odoo.env[_name]
             ids = model.search(criteria)
             _logger.info("Number of Models to be deleted - "+str(len(ids)))
-            if len(ids) > 2000:
+            if len(ids) > 3000:
                 _logger.info("Number of Models to be deletedis high - running in batches - Hang on ....")
-                batches = tools.batcher(ids,2000)
+                batches = tools.batcher(ids,3000)
                 _logger.debug(len(batches.keys()))
                 _logger.info("Number of Models to be deleted is high - running in batches - Hang on .... batch size is 2000")
                 for counter in batches.keys():
@@ -90,7 +89,7 @@ class Odoo(rpc.ODOO):
             _logger.error("Invalid Odoo config")
             return
         _logger.info("Deleting models in order before staring import process")
-        self.deleteModels(['purchase.order','vendor','customer','product.template','product.attribute'])
+        self.deleteModels(['purchase.order','sale.order','vendor','customer','product.template','product.attribute'])
         _logger.info(" Finished Deleting models")
 
 
