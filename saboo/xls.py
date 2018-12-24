@@ -54,7 +54,7 @@ class XLS(object):
             _logger.error("Invalid Configuration - Cannot execute")    
         self.xlsx = pd.ExcelFile(self.path or saboo_path)
         self.original = pd.read_excel(self.xlsx, 'Sale',converters = self.get_all_columns())
-        self.sb = self.original[:10000]
+        self.sb = self.original
         self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
         self.prepare()
     
@@ -132,29 +132,24 @@ class XLS(object):
 
 
     def prepareProducts(self):
-        gp_prods = self.sb.groupby([self.sb[x].str.upper() for x in self.product_attribute_cols])
+        sb = self.sb
+        sb.loc[:,'External NAME'] = ""
+        gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_cols])
         prod_id = 0
-        self._products = pd.DataFrame()
         for name,group in gp_prods:
-            print(name)
-            self.sb.loc[group.index.values,'External NAME'] = str(prod_id)
-            temp = self.sb.loc[group.index.values[:1],self.product_attribute_cols_ext]
-            if self._products.empty:
-                self._products = temp
-            else:    
-                self._products = pd.concat([self._products,temp])
+            sb.loc[group.index.values,'External NAME'].apply(lambda row:str(prod_id))
             prod_id += 1
+        self._products = sb.loc[sb.duplicated('External NAME')<1,self.product_attribute_cols_ext]
         _logger.debug(self._products)
 
     
     def prepareCustomers(self):
         sb = self.sb
-        sb['Customer/External ID'] = sb.reset_index()['index'].apply(lambda index: "customer_template_"+str(index))
-        #sb['TEL'] = sb['TEL'].fillna("").astype('str')
-        gp_cust = sb.groupby([sb[x].str.upper() for x in self.customer_attribute_columns],sort=False)
+        sb.loc[:,'Customer/External ID'] = sb.reset_index()['index'].apply(lambda index: "customer_template_"+str(index))
+        sb.loc[:,'CDUP'] = sb.duplicated(self._customer_attribute_columns,False).values
+        gp_cust = sb[sb['CDUP'] == True].groupby(self.customer_attribute_columns,sort=False)
         for name,group in gp_cust:
-            if(group.index.size>1):
-                sb.loc[group.index.values[1:],'Customer/External ID']= sb.loc[group.index.values[:1],'Customer/External ID'].values[0]    
+            group.loc[group.index.values[1:],'Customer/External ID'] = group.loc[group.index.values[:1],'Customer/External ID'].values[0]
     
     def deduplicate(self,sb,list_cols):
         dedup = pd.DataFrame()
@@ -274,7 +269,7 @@ class XLS(object):
     def create_customers(self):
         cust = pd.DataFrame()
         cust[['name','mobile','street','city','zip','email','Customer/External ID']] = self.sb[['CNAME','TEL','ADD1','CITY','PCODE','EMAIL','Customer/External ID']]
-        cust['street2'] = self.sb.ADD1.astype('str')+" "+ self.sb.ADD2.astype('str')
+        cust['street2'] = self.sb.ADD1+" "+ self.sb.ADD2
         cust['customer'] = True
         cust = self.deduplicate(cust,['name','mobile'])
         customer = modules.Customer(self.conf)
@@ -285,6 +280,7 @@ class XLS(object):
         self.update_customer_id(cust)
     
     def update_customer_id(self,cust):
+         _logger.debug("----Updating Customer ID in XLS----")
         gp_cust = self.sb.groupby([self.sb[x].str.upper() for x in self.customer_attribute_columns],sort=False)
         for name,group in gp_cust:
             self.sb.loc[group.index.values,'Customer/External ID'] = cust[cust['Customer/External ID'] == group[:1]['Customer/External ID'].values[0]]['Customer ID'].values

@@ -65,21 +65,24 @@ class Odoo(rpc.ODOO):
                 criteria = []
             model = odoo.env[_name]
             ids = model.search(criteria)
-            _logger.info("Number of Models to be deleted - "+str(len(ids)))
-            if len(ids) > 3000:
-                _logger.info("Number of Models to be deletedis high - running in batches - Hang on ....")
-                batches = tools.batcher(ids,3000)
-                _logger.debug(len(batches.keys()))
-                _logger.info("Number of Models to be deleted is high - running in batches - Hang on .... batch size is 2000")
-                for counter in batches.keys():
-                    partial = ids[batches[counter][0]:batches[counter][1]]
+            if len(ids) < 1:
+                _logger.info("No Records in DB for " + name)
+            else:    
+                _logger.info("Number of Models to be deleted - "+str(len(ids)))
+                if len(ids) > 3000:
+                    _logger.info("Number of Models to be deletedis high - running in batches - Hang on ....")
+                    batches = tools.batcher(ids,3000)
+                    _logger.debug(len(batches.keys()))
+                    _logger.info("Number of Models to be deleted is high - running in batches - Hang on .... batch size is 2000")
+                    for counter in batches.keys():
+                        partial = ids[batches[counter][0]:batches[counter][1]]
+                        if _name == 'purchase.order':
+                            odoo.execute_kw(name,'button_cancel',[partial])
+                        odoo.execute_kw(_name,'unlink',[partial])
+                else:   
                     if _name == 'purchase.order':
-                        odoo.execute_kw(name,'button_cancel',[partial])
-                    odoo.execute_kw(_name,'unlink',[partial])
-            else:   
-                if _name == 'purchase.order':
-                    odoo.execute_kw(name,'button_cancel',[ids])
-                odoo.execute_kw(_name,'unlink',[ids])
+                        odoo.execute_kw(name,'button_cancel',[ids])
+                    odoo.execute_kw(_name,'unlink',[ids])
 
     def initialize(self):
         _logger.debug("Initializing Odoo instance")

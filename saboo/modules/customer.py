@@ -47,7 +47,7 @@ class Customer(Module):
     
     def get_customer_list(self):
         odoo = tools.login(self.conf['odoo'])
-        self.model = odoo.env[self._name]
+        model = odoo.env[self._name]
         ids = model.search([('customer','=',True)])
         ids.sort()
         return ids
@@ -57,6 +57,7 @@ class Customer(Module):
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
         all_ids=[]
+        _logger.debug("the values for batching are " + str(self.max_records)+" "+str(self.batch_size))
         if len(customers) > self.max_records:
             thread_list = {}
             batches = tools.batcher(customers,self.batch_size)
@@ -99,15 +100,15 @@ class CustomerThread(threading.Thread):
         _logger.info("Exiting " + self.name)
     
     def create_customers(self):
-        odoo = Odoo(self.conf['odoo'])
+        odoo = saboo.Odoo(self.conf['odoo'])
         odoo.connect()
         model = odoo.env[self.model_name]
         customers = self.customers
         batches = tools.batcher(customers,self.batch_size)
         for counter in batches.keys():
-            _logger.debug("Running Batch no : " + str(counter+1))
+            _logger.debug("Running "+self.name+" Batch no : " + str(counter+1))
             partial = customers[batches[counter][0]:batches[counter][1]]
-            ids = self.model.create(partial)
+            ids = model.create(partial)
 
 class Vendor(Customer):
 
