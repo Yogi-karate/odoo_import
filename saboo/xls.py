@@ -53,7 +53,7 @@ class XLS(object):
         else:
             _logger.error("Invalid Configuration - Cannot execute")    
         self.xlsx = pd.ExcelFile(self.path or saboo_path)
-        self.original = pd.read_excel(self.xlsx, 'Sale',converters = self.get_all_columns())
+        self.original = pd.read_excel(self.xlsx, 'Sale',dtypes = self.get_all_columns())
         self.sb = self.original
         self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
         self.prepare()
@@ -109,6 +109,12 @@ class XLS(object):
             self.write(self._errored,'errors')
         else:   
             return True
+    def fillna(self):
+        columns = self.get_all_columns()
+        for column in columns:
+            _logger.debug("The column to fillna is " + column)
+            self.sb[column] = self.sb[column].fillna('')
+
 
     def prepare(self):
         conf = self.conf['xls']
@@ -123,6 +129,7 @@ class XLS(object):
             raise ValueError("Invalid Configuration")
         self._original = self.sb.copy()
         _logger.debug("ignore errors value"+conf['ignore_errors'])
+        self.fillna()
         if self._validate() or conf['ignore_errors'] == '1':
             _logger.debug("Setting Up Product Data from Xl File")    
             self.prepareProducts()
@@ -285,6 +292,7 @@ class XLS(object):
         _logger.debug(cust['name'].count())
         cust['Customer ID'] = ids
         self.update_customer_id(cust)
+        self.customers = cust
     
     def update_customer_id(self,cust):
         _logger.debug("----Updating Customer ID in Table----")
