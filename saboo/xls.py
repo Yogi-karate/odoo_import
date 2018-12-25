@@ -53,7 +53,7 @@ class XLS(object):
         else:
             _logger.error("Invalid Configuration - Cannot execute")    
         self.xlsx = pd.ExcelFile(self.path or saboo_path)
-        self.original = pd.read_excel(self.xlsx, 'Sale',dtypes = self.get_all_columns())
+        self.original = pd.read_excel(self.xlsx, 'Sale',converters = self.get_all_columns())
         self.sb = self.original
         self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
         self.prepare()
