@@ -57,7 +57,7 @@ class Customer(Module):
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
         all_ids=[]
-        _logger.debug("the values for batching are " + str(self.max_records)+" "+str(self.batch_size))
+        _logger.debug("The batching values are  " + str(self.max_records)+" "+str(self.batch_size))
         if len(customers) > self.max_records:
             thread_list = {}
             batches = tools.batcher(customers,self.batch_size)

@@ -280,7 +280,7 @@ class XLS(object):
         self.update_customer_id(cust)
     
     def update_customer_id(self,cust):
-         _logger.debug("----Updating Customer ID in XLS----")
+        _logger.debug("----Updating Customer ID in Table----")
         gp_cust = self.sb.groupby([self.sb[x].str.upper() for x in self.customer_attribute_columns],sort=False)
         for name,group in gp_cust:
             self.sb.loc[group.index.values,'Customer/External ID'] = cust[cust['Customer/External ID'] == group[:1]['Customer/External ID'].values[0]]['Customer ID'].values
