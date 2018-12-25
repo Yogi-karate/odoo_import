@@ -104,6 +104,8 @@ class XLS(object):
         if(len(self._errored.index)>0):
             _logger.error("Sheet has " + str(len(self._errored.index))+" invalid records")
             self.sb = sb.drop(self._errored.index.values)
+            # Cleaning up indexes
+            self.sb.reset_index(drop=True)
             self.write(self._errored,'errors')
         else:   
             return True
@@ -136,16 +138,21 @@ class XLS(object):
         sb.loc[:,'External NAME'] = ""
         gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_cols])
         prod_id = 0
+        products = pd.DataFrame()
         for name,group in gp_prods:
+            temp = pd.DataFrame()
             sb.loc[group.index.values,'External NAME'].apply(lambda row:str(prod_id))
+            temp = sb.loc[group.index.values[:1]][self.product_attribute_cols_ext]
+            products = pd.concat([products,temp])
             prod_id += 1
-        self._products = sb.loc[sb.duplicated('External NAME')<1,self.product_attribute_cols_ext]
+        self._products = products
         _logger.debug(self._products)
 
     
     def prepareCustomers(self):
         sb = self.sb
-        sb.loc[:,'Customer/External ID'] = sb.reset_index()['index'].apply(lambda index: "customer_template_"+str(index))
+        sb['Customer/External ID'] = sb.index
+        sb['Customer/External ID'] =sb['Customer/External ID'].apply(lambda index: "customer_template_"+str(index))
         sb.loc[:,'CDUP'] = sb.duplicated(self._customer_attribute_columns,False).values
         gp_cust = sb[sb['CDUP'] == True].groupby(self.customer_attribute_columns,sort=False)
         for name,group in gp_cust:
@@ -188,7 +195,7 @@ class XLS(object):
     def create_attributes(self):
         attributes = modules.ProductAttributes(self.conf)
         prods = self._products
-        self.attribute_values = attributes.create({attribute:prods.loc[prods.duplicated(attribute)<1,attribute].values for attribute in self.attribute_cols},None)
+        self.attribute_values = attributes.create({attribute:prods.loc[prods.duplicated(attribute)<1,attribute].sort_values().values for attribute in self.attribute_cols},None)
         _logger.info("Number of attributes created --> "+str(len(self.attribute_values)))
 
 
@@ -236,10 +243,10 @@ class XLS(object):
         gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_cols])
         prod_id = 0
         for name,group in gp_prods:
-            print(name)
-            print(group[self.product_attribute_cols])
-            self.sb.loc[group.index.values,'External NAME'] = prods[prods['External NAME'] == group[:1]['External NAME'].values[0]]['Product ID'].values
-            print(self.sb.loc[group.index.values,'External NAME'].values)    
+            _logger.debug(name)
+            _logger.debug(group[self.product_attribute_cols])
+            self.sb.loc[group.index.values,'External NAME'] = prods.loc[group.index.values[:1],'Product ID'].values
+            _logger.debug(self.sb.loc[group.index.values,'External NAME'].values)    
             
     def create_products_manual(self):
         template_cols = ['External ID','Name','Product Attributes/ Attribute Values','Product Attributes/Attribute','Type','Tracking']
@@ -285,7 +292,7 @@ class XLS(object):
         sb.loc[sb['CDUP'] == False,'Customer/External ID'] = cust['Customer ID']
         gp_cust = sb[sb['CDUP'] == True].groupby([self.sb[x].str.upper() for x in self.customer_attribute_columns],sort=False)
         for name,group in gp_cust:
-            sb.loc[group.index.values,'Customer/External ID'] = group.loc[group.index.values[:1],'Customer/External ID'].values[0]
+            sb.loc[group.index.values,'Customer/External ID'] = cust.loc[group.index.values[:1],'Customer ID'].values[0]
         _logger.debug(sb['Customer/External ID'][:100].values)    
 
     def create_customers_manual(self):
