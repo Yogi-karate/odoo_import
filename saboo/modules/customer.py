@@ -123,6 +123,7 @@ class Vendor(Customer):
         for vendor in values:
             vendor['supplier'] = True
             vendor['is_company'] = True
+            vendor['customer'] = False
             model = odoo.env[self._name]
             ids = model.create(values)
             ids.sort()
