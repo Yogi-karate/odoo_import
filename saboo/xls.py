@@ -281,10 +281,12 @@ class XLS(object):
     
     def update_customer_id(self,cust):
         _logger.debug("----Updating Customer ID in Table----")
-        gp_cust = self.sb.groupby([self.sb[x].str.upper() for x in self.customer_attribute_columns],sort=False)
+        sb = self.sb
+        sb.loc[sb['CDUP'] == False,'Customer/External ID'] = cust['Customer ID']
+        gp_cust = sb[sb['CDUP'] == True].groupby([self.sb[x].str.upper() for x in self.customer_attribute_columns],sort=False)
         for name,group in gp_cust:
-            self.sb.loc[group.index.values,'Customer/External ID'] = cust[cust['Customer/External ID'] == group[:1]['Customer/External ID'].values[0]]['Customer ID'].values
-        _logger.debug(self.sb['Customer/External ID'][:100].values)    
+            sb.loc[group.index.values,'Customer/External ID'] = group.loc[group.index.values[:1],'Customer/External ID'].values[0]
+        _logger.debug(sb['Customer/External ID'][:100].values)    
 
     def create_customers_manual(self):
         cust = pd.DataFrame()
