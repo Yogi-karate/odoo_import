@@ -55,21 +55,25 @@ def main():
             _init_odoo(conf)
     else:
         raise Exception("Invalid Configuration")
-    for command in _parse_commands():
-        _logger.debug("The command to execute is "+command)
-        o = commands[command]()
-        _logger.debug("The command to execute is "+str(o))
-        o.run(conf)
-    _logger.debug("The modules are "+ conf['Modules']['name'])  
-
+    try:    
+        for command in _parse_commands():
+            _logger.debug("The command to execute is "+command)
+            o = commands[command]()
+            _logger.debug("The command to execute is "+str(o))
+            o.run(conf)
+        _logger.debug("The modules are "+ conf['Modules']['name'])  
+    except Exception as ex:
+        _logger.fatal("Error executing command")
+        _logger.exception(ex)
 
 def _parse_commands():
     commands = []
     # check if args has 
     command_args = sys.argv[3:]
     if len(command_args) and command_args[0] and command_args[0].startswith('--'):
-        _logger.debug("the command is "+command_args[0])
-        commands.append('xls')
+        _logger.debug("the command is "+command_args[0][2:])
+        commands.append(command_args[0][2:])
+
     else:
         commands.append('xls')
         _logger.info("No command given - so executing default xls import command" + str(commands))
@@ -107,53 +111,3 @@ def _init_odoo(conf):
     odoo = Odoo(conf['odoo'])
     odoo.initialize()
     globals.odoo_conf['instance'] = odoo
-    #conf['odoo']['instance'] = odoo
-
-def updateSaleOrders(sb):
-    so = odoo.env['sale.order']
-    so_ids = so.search([('state', 'ilike', 'sale')])
-    so_data = createSaleOrders(sb)
-    for ord in so_ids:
-        s_ord = so.browse(ord)
-        if (so_data[so_data['ORDER REFERENCE'] == s_ord.name]["ORDER REFERENCE"].count() == 1):
-            print("Hello")
-            updateMoveLineWithLotNo(odoo, s_ord.picking_ids,
-                                    sb[so_data['ORDER REFERENCE'] == s_ord.name]['ENGINE'].values[0])
-        else:
-            print("ERROR : NOTHING TO DO FOR" + s_ord.name)
-
-def updateOrders(model,state):
-    Order = odoo.env[model]
-    ids = Order.search([('state','ilike',state)])
-    print(ids)
-    for po in Order.browse(ids):
-        print(po.name)
-        print(po.picking_ids)
-        record = sb[sb['ORDERNO'] == po.name]
-        if not record.empty:
-            print((record['ENGINE']+"/"+record['CHASSIS']).values[0])
-            print(po.picking_ids.show_lots_text)
-            #updateMoveLineWithLotNo(po.picking_ids,(record['ENGINE']+"/"+record['CHASSIS']).values[0])
-            print(po.picking_ids.state)
-            if po.picking_ids.state == 'done':
-                print("Nothing to Do ")
-            else:
-                print("Validating Stock Pick")
-                valid = po.picking_ids.button_validate()
-                print(valid)
-        else: 
-            print("ERROR - Invalid Order" + po.name)
-
-def batcher(ids,size):
-    batch = {}
-    start = 0
-    end = size
-    count = int(len(ids)/size)
-    print(count)
-    for idx in range(count):
-        batch[idx] = [start,end]
-        if(idx == count-1 and len(ids)%size > 0):
-            batch[idx+1] = [end,len(ids)] 
-        start = end
-        end = end + size
-    return batch 

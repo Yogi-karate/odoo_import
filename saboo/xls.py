@@ -46,12 +46,16 @@ class XLS(object):
     
     def __init__(self, conf,saboo_path='Saboo_data.xlsx',
                  sheet='Sale'):
-        if conf and conf['xls'] and conf['Modules']['name']:
+        if conf and conf['xls'] and conf['xls']['root'] and conf['Modules']['name']:
             self.conf = conf
-            self.path = conf['xls']['xl_file']
+            self.root = conf['xls']['root']
+            if not self.root.endswith('/'):
+                self.root = self.root+'/'
+            self.path = self.root+conf['xls']['xl_file']
             self.modules = conf['Modules']['name'].split(",")
         else:
-            _logger.error("Invalid Configuration - Cannot execute")    
+            _logger.error("Invalid Configuration - Cannot execute")
+            raise Exception("Cannot process excel file")    
         self.xlsx = pd.ExcelFile(self.path or saboo_path)
         self.original = pd.read_excel(self.xlsx, 'Sale',converters = self.get_all_columns())
         self.sb = self.original
@@ -119,7 +123,7 @@ class XLS(object):
     def prepare(self):
         conf = self.conf['xls']
         self._mode = self.conf['xls']['mode']
-        output_dir = conf['output']
+        output_dir = self.root + conf['output_folder']
         op = os.path.join(output_dir,conf['version'])
         if op and not os.path.isdir(op):
             os.makedirs(op)
@@ -344,6 +348,12 @@ class XLS(object):
         po['External ID'] = po.reset_index()['index'].apply(lambda index: "purchase_template_"+str(index))
         return po
     
+    def create_vehicles(self):
+        vehicle_df = pd.DataFrame()
+        vehicle_df[['name','chasis_no','registration_no','product_id']] = self.sb[['ENGINE','CHASSIS','TRNO','External NAME']]
+        vehicle = modules.Vehicle(self.conf)
+        vehicle.create(vehicle_df.to_dict(orient = 'records'),None)
+
     def create_enquiries(self):
         return self.create_enquiries_manual()
         

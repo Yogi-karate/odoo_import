@@ -56,25 +56,7 @@ class Customer(Module):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
-        all_ids=[]
-        _logger.debug("The batching values are  " + str(self.max_records)+" "+str(self.batch_size))
-        if len(customers) > self.max_records:
-            thread_list = {}
-            batches = tools.batcher(customers,self.batch_size)
-            _logger.debug("Number OF Batches is "+str(len(batches.keys())))
-            for counter in batches.keys():
-                _logger.debug("Running Batch no : " + str(counter+1))
-                partial = customers[batches[counter][0]:batches[counter][1]]
-                thread = CustomerThread("Thread-"+str(counter),self._name,self.conf,partial)
-                thread_list[counter] = thread
-            # Start new Threads
-            for key in thread_list.keys():
-                thread_list[key].start()
-            for key in thread_list.keys():
-                thread_list[key].join()
-            _logger.info("Exiting Main Thread")
-        else:
-             self.model.create(customers)
+        odoo.run(self._name,'create',customers)
         return self.get_customer_list()
 
     def write(self,path):
@@ -83,32 +65,6 @@ class Customer(Module):
     @property
     def get_field_list(self):
         return self._field_list
-
-class CustomerThread(threading.Thread):
-
-    def __init__(self,thread_name,model_name,conf,customers):
-        threading.Thread.__init__(self)
-        self.conf = conf
-        self.customers = customers
-        self.batch_size = int(conf['customers']['max_thread_records'])
-        self.name = thread_name
-        self.model_name = model_name
-
-    def run(self):
-        _logger.info("Starting " + self.name)
-        self.create_customers()
-        _logger.info("Exiting " + self.name)
-    
-    def create_customers(self):
-        odoo = saboo.Odoo(self.conf['odoo'])
-        odoo.connect()
-        model = odoo.env[self.model_name]
-        customers = self.customers
-        batches = tools.batcher(customers,self.batch_size)
-        for counter in batches.keys():
-            _logger.debug("Running "+self.name+" Batch no : " + str(counter+1))
-            partial = customers[batches[counter][0]:batches[counter][1]]
-            ids = model.create(partial)
 
 class Vendor(Customer):
 

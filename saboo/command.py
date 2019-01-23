@@ -34,9 +34,10 @@ from .tools import login,batcher,get_thread_conf
 _logger = logging.getLogger(__name__)
 
 class OrderConfirm():
-    def __init__(self, name,criteria):
+    def __init__(self, name,method,criteria):
         self.name = name
         self.criteria = criteria
+        self.method = method
 
     def confirm(self,conf):
         # Create new threads
@@ -49,46 +50,17 @@ class OrderConfirm():
         criteria = self.criteria
         model = odoo.env[name]
         ids = model.search(criteria) 
-        batches = batcher(ids,100)
-        _logger.debug(len(batches.keys()))
-        for counter in batches.keys():
-            _logger.debug(len(ids[batches[counter][0]:batches[counter][1]]))
-            partial = ids[batches[counter][0]:batches[counter][1]]
-            thread = Order(get_thread_conf(conf,name,counter,partial))
-            thread_list[counter] = thread
-        # Start new Threads
-        for key in thread_list.keys():
-            thread_list[key].start()
-        for key in thread_list.keys():
-            thread_list[key].join()
-        _logger.info("Exiting Main Thread")
+        _logger.debug("Number of orders to confirm : " + str(len(ids)))
+        odoo.run(name,self.method,ids)
 
-class Order (threading.Thread):
-    def __init__(self, conf):
-        threading.Thread.__init__(self,None,conf['id'],conf['name'],conf)
-        self.conf = conf
-        self.threadID = conf['id']
-        self.name = conf['name']  
-    def run(self):
-        _logger.info("Starting " + self.name)
-        self.approve_order()
-        _logger.info("Exiting " + self.name)
-    
-    def approve_order(self):
-        conf = self.conf
-        odoo = login(conf['odoo'])
-        ids = conf['ids']
-        #model = odoo.env[self.name]
-        _logger.info("Starting batch : "+str(self.threadID))
-        for counter in range(len(ids)):
-            ret_val = odoo.execute_kw(conf['model'],conf['action'],[[ids[counter]]])
-            _logger.debug("done with id"+str(ret_val))
-        _logger.info("-------Ending batch : "+str(self.threadID)+"------")  
-        
 class Xls(Command):
     command = 'xls'
     def run(self,conf):
         if  conf['xls']:
+            _logger.info("Deleting models in order before staring import process")
+            odoo = login(conf['odoo'])
+            odoo.deleteModels(['purchase.order','sale.order','vendor','customer','vehicle','product.template','product.attribute'])
+            _logger.info(" Finished Deleting models")
             xls = saboo.XLS(conf)
             _logger.debug("The xl file read in is "+ str(xls.sb['ORDERNO'].count()))
             xls.execute()  
@@ -97,13 +69,13 @@ class SaleConfirm(Command):
     def run(self,conf):
         name='sale.order'
         criteria = [('state','ilike','draft')]
-        order_confirm = OrderConfirm(name,criteria)
+        order_confirm = OrderConfirm(name,'action_multi_confirm',criteria)
         order_confirm.confirm(conf)
 
 class PurchaseConfirm(Command):
     def run(self,conf):
         name='purchase.order'
         criteria = [('state','ilike','draft')]
-        order_confirm = OrderConfirm(name,criteria)
+        order_confirm = OrderConfirm(name,'button_confirm',criteria)
         order_confirm.confirm(conf)
 

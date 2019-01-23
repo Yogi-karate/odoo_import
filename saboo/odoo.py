@@ -23,8 +23,10 @@ This module contains Loading of Saboo specific xl sheets for odoo import
 """
 
 import logging
+import threading
+
 import odoorpc as rpc
-import saboo.tools as tools
+from . import tools
 
 _logger = logging.getLogger(__name__)
 
@@ -69,20 +71,35 @@ class Odoo(rpc.ODOO):
                 _logger.info("No Records in DB for " + name)
             else:    
                 _logger.info("Number of Models to be deleted - "+str(len(ids)))
-                if len(ids) > 3000:
-                    _logger.info("Number of Models to be deletedis high - running in batches - Hang on ....")
-                    batches = tools.batcher(ids,3000)
-                    _logger.debug(len(batches.keys()))
-                    _logger.info("Number of Models to be deleted is high - running in batches - Hang on .... batch size is 2000")
-                    for counter in batches.keys():
-                        partial = ids[batches[counter][0]:batches[counter][1]]
-                        if _name == 'purchase.order':
-                            odoo.execute_kw(name,'button_cancel',[partial])
-                        odoo.execute_kw(_name,'unlink',[partial])
-                else:   
-                    if _name == 'purchase.order':
-                        odoo.execute_kw(name,'button_cancel',[ids])
-                    odoo.execute_kw(_name,'unlink',[ids])
+                if _name == 'purchase.order':
+                    self.run(name,'button_cancel',ids)
+                if _name == 'sale.order':
+                    self.run(name,'action_cancel',ids)
+                self.run(_name,'unlink',ids)
+    
+    def run(self,name,method,ids):
+        self.max_records = int(self.conf['max_records'])
+        self.batch_size = int(self.conf['batch_size'])
+        _logger.debug("The batching values are  " + str(self.max_records)+" "+str(self.batch_size))
+        if len(ids) > self.max_records:
+            thread_list = {}
+            batches = tools.batcher(ids,self.batch_size)
+            _logger.debug("Number OF Batches is "+str(len(batches.keys())))
+            for counter in batches.keys():
+                _logger.debug("Running Batch no : " + str(counter+1))
+                partial = ids[batches[counter][0]:batches[counter][1]]
+                thread = OdooThread("Thread-"+str(counter),name,method,self.conf,partial)
+                thread_list[counter] = thread
+            # Start new Threads
+            for key in thread_list.keys():
+                thread_list[key].start()
+            for key in thread_list.keys():
+                thread_list[key].join()
+            _logger.info("Exiting Main Thread")
+        else:
+            _logger.info("Running Normal execute")
+            self.connect()
+            return self.execute_kw(name,method,[ids])
 
     def initialize(self):
         _logger.debug("Initializing Odoo instance")
@@ -91,9 +108,38 @@ class Odoo(rpc.ODOO):
         except Exception:
             _logger.error("Invalid Odoo config")
             return
-        _logger.info("Deleting models in order before staring import process")
-        self.deleteModels(['purchase.order','sale.order','vendor','customer','product.template','product.attribute'])
-        _logger.info(" Finished Deleting models")
 
+class OdooThread(threading.Thread):
+
+    def __init__(self,thread_name,model_name,method,conf,ids):
+        threading.Thread.__init__(self)
+        if not method or not model_name or not ids:
+            raise Exception(" Cannot run thread  - invalid configuration")
+        self.conf = conf
+        self.ids = ids
+        self.batch_size = int(conf['max_thread_records'])
+        self.name = thread_name
+        self.model_name = model_name
+        self.method = method
+
+    def run(self):
+        _logger.info("Starting " + self.name)
+        self.process()
+        _logger.info("Exiting " + self.name)
+    
+    def process(self):
+        odoo = Odoo(self.conf)
+        odoo.connect()
+        model = odoo.env[self.model_name]
+        ids = self.ids
+        batches = tools.batcher(ids,self.batch_size)
+        for counter in batches.keys():
+            _logger.debug("Running "+self.name+" Batch no : " + str(counter+1))
+            partial = ids[batches[counter][0]:batches[counter][1]]
+            try:
+                res = odoo.execute_kw(self.model_name,self.method,[partial])
+            except Exception as ex:
+                _logger.error("ERROR - Cannot Process the odoo method for  " + str(model))
+                _logger.exception(ex)
 
     

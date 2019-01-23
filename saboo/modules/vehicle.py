@@ -24,19 +24,28 @@ The :class:`ODOO` class is the entry point to manage `Odoo` servers using odoo R
 You can use this one to write `Python` programs that performs a variety of
 automated jobs that communicate with a `Odoo` server.
 """
-
-__author__ = 'Rammohan Tangirala'
-__email__ = 'ram.tangirala@gmail.com'
-__licence__ = 'LGPL v3'
-__version__ = '0.0.1'
-
+import saboo
+import saboo.tools as tools
 from .module import Module
-from .field import Field
-from .purchase_order import PurchaseOrder
-from .product_attributes import ProductAttributes
-from .product import ProductTemplate
-from .product import ProductProduct
-from .customer import Customer,Vendor,Lead
-from .vehicle import Vehicle
+import pandas as pd
+import logging
+import threading
 
-# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
+
+_logger = logging.getLogger(__name__)
+
+class Vehicle(Module):
+
+    _name = 'vehicle'
+
+    def __init__(self,conf):
+        if not conf['attributes'] or not conf['odoo']:
+            raise Exception("Cannot create vehicles")
+        self.conf = conf
+
+    def create(self,vehicles,odoo):
+        if not odoo:
+            odoo = tools.login(self.conf['odoo'])
+        self.model = odoo.env[self._name]
+        odoo.run(self._name,'create',vehicles)
+        
