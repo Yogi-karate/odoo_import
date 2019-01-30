@@ -39,6 +39,7 @@ class XLS(object):
     _attribute_cols = ['COLOR']
     _customer_attribute_columns = ['CNAME','TEL']
     _customer_columns = {'CNAME':str,'TEL':str,'ADD1':str,'CITY':str,'PCODE':str,'EMAIL':str}
+    _order_columns = {'ORDERDATE':str}
     _products = None
    # modules = {1:'attributes',2:'products',3:'purchase_orders',4:'customers',5:'sale_orders',6:'enquiries'}
     _valid = True
@@ -69,6 +70,7 @@ class XLS(object):
         all_cols.update(self._product_columns)
         all_cols.update(self._attribute_columns)
         all_cols.update(self._customer_columns)
+        all_cols.update(self._order_columns)
         #all_cols = dict(self._product_columns.items()+self._attribute_columns.items()+self._customer_columns.items())
         return all_cols
 
@@ -331,6 +333,12 @@ class XLS(object):
         id = self.create_vendors()
         _logger.debug("The vendor id is "+str(id))
         if id:
+            po_df = pd.DataFrame()
+            po_df[['name','date_order','product_id','line_name','price_unit','vehicle']] = self.sb[['ORDERNO','ORDERDATE','External NAME','NAME','EXSRPRICE','ENGINE']]
+            po_df.loc[:,'partner_id'] = id[0]
+            po = modules.PurchaseOrder(self.conf)
+            po.create(po_df.to_dict(orient = 'records'),None)
+
             return self.create_purchase_orders_manual()
 
     def create_purchase_orders_manual(self):    
@@ -366,6 +374,13 @@ class XLS(object):
         return pipeline
 
     def create_sale_orders(self):
+        so_df = pd.DataFrame()
+        so_df[['name','date_order','product_id','line_name','price_unit','partner_id','vehicle']] = self.sb[['ORDERNO','ORDERDATE','External NAME','NAME','EXSRPRICE','Customer/External ID','ENGINE']]
+        so = modules.SaleOrder(self.conf)
+        so.create(so_df.to_dict(orient = 'records'),None)
+        return self.create_sale_orders_manual()
+
+    def create_sale_orders_manual(self):
         so = pd.DataFrame()
         so_template = ['Order Date','Order Lines/Scheduled Date','Vendor Reference','Order Lines/Description','Order Lines/Product Unit Of Measure/Database ID','Order Lines/Quantity','Order Lines/Unit Price','Order Lines/Taxes /Database ID','Vendor','Order Lines/Product','Status']
         #po[['Order Date','Order Lines/Scheduled Date','Order Lines/Description','Order Lines/Product','Order Lines/Unit Price']] = sb[['ORDERDATE','ORDERDATE','NAME','NAME','BASIC']]

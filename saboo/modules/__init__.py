@@ -33,6 +33,7 @@ __version__ = '0.0.1'
 from .module import Module
 from .field import Field
 from .purchase_order import PurchaseOrder
+from .sale_order import SaleOrder
 from .product_attributes import ProductAttributes
 from .product import ProductTemplate
 from .product import ProductProduct

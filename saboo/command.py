@@ -59,7 +59,7 @@ class Xls(Command):
         if  conf['xls']:
             _logger.info("Deleting models in order before staring import process")
             odoo = login(conf['odoo'])
-            odoo.deleteModels(['purchase.order','sale.order','vendor','customer','vehicle','product.template','product.attribute'])
+            odoo.deleteModels(['stock.quant','stock.production.lot','stock.picking','purchase.order','sale.order','vendor','customer','vehicle','product.template','product.attribute'])
             _logger.info(" Finished Deleting models")
             xls = saboo.XLS(conf)
             _logger.debug("The xl file read in is "+ str(xls.sb['ORDERNO'].count()))

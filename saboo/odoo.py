@@ -73,7 +73,7 @@ class Odoo(rpc.ODOO):
                 _logger.info("Number of Models to be deleted - "+str(len(ids)))
                 if _name == 'purchase.order':
                     self.run(name,'button_cancel',ids)
-                if _name == 'sale.order':
+                if _name in ['stock.picking','sale.order']:
                     self.run(name,'action_cancel',ids)
                 self.run(_name,'unlink',ids)
     

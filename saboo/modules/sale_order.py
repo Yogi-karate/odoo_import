@@ -30,9 +30,9 @@ from .module import Module
 import saboo.tools as tools
 
 
-class PurchaseOrder(Module):
+class SaleOrder(Module):
     
-    _name = 'purchase.order'
+    _name = 'sale.order'
     _field_list = None
     po_template = ['Order Date','Order Lines/Scheduled Date','Vendor Reference',
 					'Order Lines/Description','Order Lines/Product Unit Of Measure/Database ID',
@@ -44,28 +44,28 @@ class PurchaseOrder(Module):
             raise Exception("Cannot create attributes")
         self.conf = conf
 
-    def create(self,purchase_list,odoo):
+    def create(self,sale_list,odoo):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
-        for po in purchase_list:
-            po['order_line'] = self.create_order_line(po)
-            po['confirm'] = "yes"
-            print(po)
-        odoo.run(self._name,'create',purchase_list)
+        for so in sale_list:
+            so['order_line'] = self.create_order_line(so)
+            so['confirm'] = "yes"
+            print(so)
+        odoo.run(self._name,'create',sale_list)
 
-    def create_order_line(self,po):
+    def create_order_line(self,so):
         order_line = {'product_qty':1,'product_uom':1}
-        order_line['date_planned'] = po['date_order']
-        order_line['product_id'] = po['product_id']
-        order_line['name'] = po['line_name']
-        order_line['price_unit'] = po['price_unit']
-        order_line['taxes_id'] = self.create_tax_line(po)
+        order_line['date_planned'] = so['date_order']
+        order_line['product_id'] = so['product_id']
+        order_line['name'] = so['line_name']
+        order_line['price_unit'] = so['price_unit']
+        order_line['tax_id'] = self.create_tax_line(so)
         return [[0,'_',order_line]]
 
     def create_tax_line(self,line_dict):
         # REDO LATER ---- need to fetch the right tax id 
-        return [[6, False, [45,46]]]
+        return [[6, False, [17,18]]]
 
     def write(self,path):
         pass
