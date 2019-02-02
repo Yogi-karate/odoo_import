@@ -50,7 +50,6 @@ class ProductTemplate(Module):
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
         ids = self.model.create(self._create_records(products,attribute_values))
-        print(ids)
         return ids
 
     def _create_records(self,products,attribute_values):
@@ -61,14 +60,12 @@ class ProductTemplate(Module):
             record['type'] = 'product'
             record['tracking'] = 'serial'
             record['attribute_line_ids'] = self._create_attribute_lines(product['values'],attribute_values)
-            print(record)
             product_list.append(record)
         return product_list
     
     def _create_attribute_lines(self,product_values,attribute_values):
         attribute_lines = []
         for vals in product_values:
-            print(vals)
             attribute,values = vals
             attribute_line = [0,'_',{'attribute_id':attribute_values[attribute]['id'],'value_ids':self._create_value_ids(values,attribute_values[attribute]['values'])}]
             attribute_lines.append(attribute_line)  
@@ -77,7 +74,6 @@ class ProductTemplate(Module):
     def _create_value_ids(self,product_values,attribute_values):    
         value_ids = []
         value_id = [6,False,[x for x,y in attribute_values if y in product_values]]
-        print(value_id)
         value_ids.append(value_id)
         return value_ids
 

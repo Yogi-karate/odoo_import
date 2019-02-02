@@ -48,4 +48,26 @@ class Vehicle(Module):
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
         odoo.run(self._name,'create',vehicles)
+
+class Inventory(Module):
+
+    _name = 'mass.order.confirm'
+
+    def __init__(self,conf):
+        if not conf['attributes'] or not conf['odoo']:
+            raise Exception("Cannot create vehicles")
+        self.conf = conf
+
+    def confirm_purchase_orders(self,inventories,odoo):
+        if not odoo:
+            odoo = tools.login(self.conf['odoo'])
+        self.model = odoo.env[self._name]
+        odoo.run(self._name,'confirm_purchase_orders',inventories)
+
+    def confirm_sale_orders(self,inventories,odoo):
+        if not odoo:
+            odoo = tools.login(self.conf['odoo'])
+        self.model = odoo.env[self._name]
+        odoo.run(self._name,'confirm_sale_orders',inventories)
+        
         

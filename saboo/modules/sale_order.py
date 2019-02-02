@@ -50,8 +50,6 @@ class SaleOrder(Module):
         self.model = odoo.env[self._name]
         for so in sale_list:
             so['order_line'] = self.create_order_line(so)
-            so['confirm'] = "yes"
-            print(so)
         odoo.run(self._name,'create',sale_list)
 
     def create_order_line(self,so):

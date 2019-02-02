@@ -50,8 +50,6 @@ class PurchaseOrder(Module):
         self.model = odoo.env[self._name]
         for po in purchase_list:
             po['order_line'] = self.create_order_line(po)
-            po['confirm'] = "yes"
-            print(po)
         odoo.run(self._name,'create',purchase_list)
 
     def create_order_line(self,po):

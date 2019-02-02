@@ -106,7 +106,7 @@ class XLS(object):
 
     def _validate(self):
         sb = self.sb
-        self._errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() | sb['ORDERDATE'].isna()] 
+        self._errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() | sb['ORDERDATE'].isna() |sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)] 
         if(len(self._errored.index)>0):
             _logger.error("Sheet has " + str(len(self._errored.index))+" invalid records")
             self.sb = sb.drop(self._errored.index.values)
@@ -204,7 +204,7 @@ class XLS(object):
                 _logger.info("END CREATING ---> "+module.upper() + " - Finished in - "+str(finish_time if finish_time >0 else finish.total_seconds()))
         else:
             _logger.error("Cannot execute with invalid data")
-    
+
     def create_attributes(self):
         attributes = modules.ProductAttributes(self.conf)
         prods = self._products
@@ -334,7 +334,7 @@ class XLS(object):
         _logger.debug("The vendor id is "+str(id))
         if id:
             po_df = pd.DataFrame()
-            po_df[['name','date_order','product_id','line_name','price_unit','vehicle']] = self.sb[['ORDERNO','ORDERDATE','External NAME','NAME','EXSRPRICE','ENGINE']]
+            po_df[['name','date_order','product_id','line_name','price_unit']] = self.sb[['ORDERNO','ORDERDATE','External NAME','NAME','EXSRPRICE']]
             po_df.loc[:,'partner_id'] = id[0]
             po = modules.PurchaseOrder(self.conf)
             po.create(po_df.to_dict(orient = 'records'),None)
@@ -358,9 +358,23 @@ class XLS(object):
     
     def create_vehicles(self):
         vehicle_df = pd.DataFrame()
-        vehicle_df[['name','chasis_no','registration_no','product_id']] = self.sb[['ENGINE','CHASSIS','TRNO','External NAME']]
+        vehicle_df[['name','chasis_no','ref','registration_no','product_id']] = self.sb[['ENGINE','CHASSIS','ORDERNO','TRNO','External NAME']]
         vehicle = modules.Vehicle(self.conf)
         vehicle.create(vehicle_df.to_dict(orient = 'records'),None)
+
+    def create_inventory(self):
+        inventory_df = pd.DataFrame()
+        inventory_df[['order_no','vehicle']] = self.sb[['ORDERNO','ENGINE']]
+        self.create_purchase_inventory(inventory_df)
+       # self.create_sale_inventory(inventory_df)
+
+    def create_purchase_inventory(self,df):
+        inventory = modules.Inventory(self.conf)
+        inventory.confirm_purchase_orders(df.to_dict(orient = 'records'),None)
+
+    def create_sale_inventory(self,df):
+        inventory = modules.Inventory(self.conf)
+        inventory.confirm_sale_orders(df.to_dict(orient = 'records'),None)
 
     def create_enquiries(self):
         return self.create_enquiries_manual()
@@ -375,7 +389,7 @@ class XLS(object):
 
     def create_sale_orders(self):
         so_df = pd.DataFrame()
-        so_df[['name','date_order','product_id','line_name','price_unit','partner_id','vehicle']] = self.sb[['ORDERNO','ORDERDATE','External NAME','NAME','EXSRPRICE','Customer/External ID','ENGINE']]
+        so_df[['name','date_order','product_id','line_name','price_unit','partner_id']] = self.sb[['ORDERNO','ORDERDATE','External NAME','NAME','EXSRPRICE','Customer/External ID']]
         so = modules.SaleOrder(self.conf)
         so.create(so_df.to_dict(orient = 'records'),None)
         return self.create_sale_orders_manual()
