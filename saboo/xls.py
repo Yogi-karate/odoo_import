@@ -106,12 +106,15 @@ class XLS(object):
 
     def _validate(self):
         sb = self.sb
-        self._errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() | sb['ORDERDATE'].isna() |sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)] 
+        self._errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() 
+                        | sb['ORDERDATE'].isna() |sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)
+                        |sb['ORDERDATE'].eq("")  |sb['ORDERNO'].eq("") | sb['ENGINE'].eq("")] 
         if(len(self._errored.index)>0):
             _logger.error("Sheet has " + str(len(self._errored.index))+" invalid records")
             self.sb = sb.drop(self._errored.index.values)
             # Cleaning up indexes
             self.sb.reset_index(drop=True)
+            _logger.info("Total Records to be processes are " + str(len(sb.index)))
             self.write(self._errored,'errors')
         else:   
             return True
@@ -365,8 +368,9 @@ class XLS(object):
     def create_inventory(self):
         inventory_df = pd.DataFrame()
         inventory_df[['order_no','vehicle']] = self.sb[['ORDERNO','ENGINE']]
-        self.create_purchase_inventory(inventory_df)
-       # self.create_sale_inventory(inventory_df)
+        #self.create_purchase_inventory(inventory_df)
+        _logger.debug("Starting Sale Order Inventory")
+        self.create_sale_inventory(inventory_df)
 
     def create_purchase_inventory(self,df):
         inventory = modules.Inventory(self.conf)
