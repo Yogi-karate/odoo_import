@@ -107,8 +107,7 @@ class XLS(object):
     def _validate(self):
         sb = self.sb
         self._errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() 
-                        | sb['ORDERDATE'].isna() |sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)
-                        |sb['ORDERDATE'].eq("")  |sb['ORDERNO'].eq("") | sb['ENGINE'].eq("")] 
+                        | sb['ORDERDATE'].isna() |sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)] 
         if(len(self._errored.index)>0):
             _logger.error("Sheet has " + str(len(self._errored.index))+" invalid records")
             self.sb = sb.drop(self._errored.index.values)
@@ -134,12 +133,10 @@ class XLS(object):
             os.makedirs(op)
         _logger.debug("The outut directory is"+op) 
         self._output_dir = op+'/'
-        if not self._check_order_nos:
-            raise ValueError("Invalid Configuration")
         self._original = self.sb.copy()
         _logger.debug("ignore errors value"+conf['ignore_errors'])
-        self.fillna()
         if self._validate() or conf['ignore_errors'] == '1':
+            self.fillna()
             _logger.debug("Setting Up Product Data from Xl File")    
             self.prepareProducts()
             _logger.debug("Setting Up Customer Data from Xl File")    
@@ -185,11 +182,6 @@ class XLS(object):
         d = {list_cols[i]:[] for i in range(0,len(list_cols))}
         return d 
 
-    def _check_order_nos(self):
-        if not self.sb:
-            return False
-        else:
-            return True
     def execute(self):
         if self._valid:
             _logger.info("Processing "+str(self.sb['ORDERNO'].count())+" Records")
