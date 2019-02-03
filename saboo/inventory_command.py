@@ -29,10 +29,20 @@ import threading
 
 from saboo import Odoo
 from . import Command
+from . import client
 from .tools import login,batcher,get_thread_conf
 
 _logger = logging.getLogger(__name__)
 
+class Inventory(Command):
+     
+    def run(self,conf):
+        client.update_config('Modules','name','inventory') 
+        _logger.warn("Running inventory should be preceded by purchase and sales order creations")
+        if  conf['xls']:
+            xls = saboo.XLS(conf)
+            _logger.debug("The xl file read in is "+ str(xls.sb['ORDERNO'].count()))
+           # xls.execute()
 
 class OrderInventory (threading.Thread):
     def __init__(self,conf,xls):
