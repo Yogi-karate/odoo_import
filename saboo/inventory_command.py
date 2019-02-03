@@ -42,7 +42,7 @@ class Inventory(Command):
         if  conf['xls']:
             xls = saboo.XLS(conf)
             _logger.debug("The xl file read in is "+ str(xls.sb['ORDERNO'].count()))
-           # xls.execute()
+            xls.execute()
 
 class OrderInventory (threading.Thread):
     def __init__(self,conf,xls):

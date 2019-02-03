@@ -78,10 +78,10 @@ def _parse_commands():
         commands.append('xls')
         _logger.info("No command given - so executing default xls import command" + str(commands))
     return commands
-    
+
 def update_config(section,name,value):
     if section and name and value:
-        config.set('Modules','name','products') 
+        config.set(section,name,value) 
         conf = dict(config.items())
 
 def _parse_config(sysconf):

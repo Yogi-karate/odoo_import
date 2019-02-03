@@ -360,9 +360,9 @@ class XLS(object):
     def create_inventory(self):
         inventory_df = pd.DataFrame()
         inventory_df[['order_no','vehicle']] = self.sb[['ORDERNO','ENGINE']]
-        #self.create_purchase_inventory(inventory_df)
+        self.create_purchase_inventory(inventory_df)
         _logger.debug("Starting Sale Order Inventory")
-        self.create_sale_inventory(inventory_df)
+        #self.create_sale_inventory(inventory_df)
 
     def create_purchase_inventory(self,df):
         inventory = modules.Inventory(self.conf)
