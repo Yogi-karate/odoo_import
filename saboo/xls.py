@@ -34,12 +34,10 @@ _logger = logging.getLogger(__name__)
 class XLS(object):
     sb = None
     xlsx = None
-    _product_columns = {'NAME':str}
-    _attribute_columns = {'COLOR':str}
-    _attribute_cols = ['COLOR']
-    _customer_attribute_columns = ['CNAME','TEL']
-    _customer_columns = {'CNAME':str,'TEL':str,'ADD1':str,'CITY':str,'PCODE':str,'EMAIL':str}
-    _order_columns = {'ORDERDATE':str}
+    # _product_columns = {'NAME':str}
+    # _customer_attribute_columns = ['CNAME','TEL']
+    # _customer_columns = {'CNAME':str,'TEL':str,'ADD1':str,'CITY':str,'PCODE':str,'EMAIL':str}
+    # _order_columns = {'ORDERDATE':str}
     _products = None
    # modules = {1:'attributes',2:'products',3:'purchase_orders',4:'customers',5:'sale_orders',6:'enquiries'}
     _valid = True
@@ -53,7 +51,7 @@ class XLS(object):
             if not self.root.endswith('/'):
                 self.root = self.root+'/'
             self.path = self.root+conf['xls']['xl_file']
-            self.modules = conf['Modules']['name'].split(",")
+            self.modules = conf['Modules']['name'].split(',')
         else:
             _logger.error("Invalid Configuration - Cannot execute")
             raise Exception("Cannot process excel file")    
@@ -63,40 +61,71 @@ class XLS(object):
         self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
         self.prepare()
     
+    def column_converters(self,attr):
+        try:
+            method_name = attr + "_columns"
+            columns = getattr(self,method_name)
+            print(columns)
+        except Exception as ex:
+            _logger.error("Invalid Conversion of columns to string dicts")
+            _logger.exception(ex)
+            return
+        if columns:
+            return {x:str for x in columns}
+        else:
+            raise Exception("Invalid Configuration - Cannot Convert " + attr )
+
+    def _get_config_columns(self,section,col='columns'):
+        conf = self.conf
+        if not section:
+            return
+        vals = conf[section][col]
+        if vals:
+            return vals.upper().split(',')
+
     def get_all_columns(self):
         # need to dynamically load all fields - to do - CHANGE this !!!!
         #print(dict(self._product_columns.items()+self._attribute_columns.items()))
         all_cols = {}
-        all_cols.update(self._product_columns)
-        all_cols.update(self._attribute_columns)
-        all_cols.update(self._customer_columns)
-        all_cols.update(self._order_columns)
-        #all_cols = dict(self._product_columns.items()+self._attribute_columns.items()+self._customer_columns.items())
+        models = ['product','customer','attribute','order']
+        for val in models:
+            all_cols.update(self.column_converters(val))
         return all_cols
-
-    @property
-    def customer_attribute_columns(self):
-        return self._customer_attribute_columns
-    
-
-    @property
-    def products(self):
-        return self._products
     
     @property
-    def attribute_cols(self):
-        return self._attribute_cols
+    def attribute_columns(self):
+        return self._get_config_columns('attributes')
 
     @property
-    def product_attribute_cols(self):
-        copy = self._attribute_cols.copy()
+    def product_attribute_columns(self):
+        copy = self.attribute_columns.copy()
         copy.insert(0,'NAME')
         return copy
     @property
-    def product_attribute_cols_ext(self):
-        copy = self.product_attribute_cols
+    def product_attribute_columns_ext(self):
+        copy = self.product_attribute_columns
         copy.insert(0,'External NAME')
         return copy
+
+    @property
+    def customer_attribute_columns(self):
+        return self._get_config_columns('customers','mandatory_columns')
+    
+    @property
+    def customer_columns(self):
+        return self._get_config_columns('customers')
+
+    @property
+    def product_columns(self):
+        return self._get_config_columns('products')
+    
+    @property
+    def order_columns(self):
+        return self._get_config_columns('orders')
+            
+    @property
+    def products(self):
+        return self._products
    
     def write(self,df,filename):
         if df is not None:
@@ -134,7 +163,7 @@ class XLS(object):
         _logger.debug("The outut directory is"+op) 
         self._output_dir = op+'/'
         self._original = self.sb.copy()
-        _logger.debug("ignore errors value"+conf['ignore_errors'])
+        _logger.debug("Ignore errors  in sheet - "+conf['ignore_errors'])
         if self._validate() or conf['ignore_errors'] == '1':
             self.fillna()
             _logger.debug("Setting Up Product Data from Xl File")    
@@ -149,13 +178,13 @@ class XLS(object):
     def prepareProducts(self):
         sb = self.sb
         sb.loc[:,'External NAME'] = ""
-        gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_cols])
+        gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_columns])
         prod_id = 0
         products = pd.DataFrame()
         for name,group in gp_prods:
             temp = pd.DataFrame()
             sb.loc[group.index.values,'External NAME'].apply(lambda row:str(prod_id))
-            temp = sb.loc[group.index.values[:1]][self.product_attribute_cols_ext]
+            temp = sb.loc[group.index.values[:1]][self.product_attribute_columns_ext]
             products = pd.concat([products,temp])
             prod_id += 1
         self._products = products
@@ -166,7 +195,7 @@ class XLS(object):
         sb = self.sb
         sb['Customer/External ID'] = sb.index
         sb['Customer/External ID'] =sb['Customer/External ID'].apply(lambda index: "customer_template_"+str(index))
-        sb.loc[:,'CDUP'] = sb.duplicated(self._customer_attribute_columns,False).values
+        sb.loc[:,'CDUP'] = sb.duplicated(self.customer_attribute_columns,False).values
         gp_cust = sb[sb['CDUP'] == True].groupby(self.customer_attribute_columns,sort=False)
         for name,group in gp_cust:
             group.loc[group.index.values[1:],'Customer/External ID'] = group.loc[group.index.values[:1],'Customer/External ID'].values[0]
@@ -203,14 +232,14 @@ class XLS(object):
     def create_attributes(self):
         attributes = modules.ProductAttributes(self.conf)
         prods = self._products
-        self.attribute_values = attributes.create({attribute:prods.loc[prods.duplicated(attribute)<1,attribute].sort_values().values for attribute in self.attribute_cols},None)
+        self.attribute_values = attributes.create({attribute:prods.loc[prods.duplicated(attribute)<1,attribute].sort_values().values for attribute in self.attribute_columns},None)
         _logger.info("Number of attributes created --> "+str(len(self.attribute_values)))
 
 
     def create_attributes_manual(self):
         attribs = self._products
         final = pd.DataFrame()
-        for col in self.attribute_cols:
+        for col in self.attribute_columns:
             af = pd.DataFrame()
             af['value_ids/name'] = attribs.loc[attribs.duplicated(col)<1,col].values
             af.loc[0,'name'] = col
@@ -218,41 +247,31 @@ class XLS(object):
             final = pd.concat([final,af])
         return final
 
-    def _get_product_id(self,df):
-        for column in self.attribute_cols:
-            value_id = [x for x,y in self.attribute_values[column]['values'] if y == df[column]]
-        print("done with "+df['NAME']+df['COLOR'])
-        if len(value_id) > 1:
-            raise Exception("Product not unique - ERROR")
-        product = modules.ProductProduct(self.conf)
-        value = product.find_product(df['NAME'],value_id,None)
-        return value[0]
-
     def create_products(self):
         prod_templates = []
         gp_prods = self._products.groupby([self._products['NAME'].str.upper()])
         for name,group in gp_prods:
-            template = {'name':name,'values':[(x,group[x].values) for x in self.attribute_cols]}
+            template = {'name':name,'values':[(x,group[x].drop_duplicates().values) for x in self.attribute_columns]}
             prod_templates.append(template)
         product = modules.ProductTemplate(self.conf)
         template_ids = product.create(prod_templates,self.attribute_values,None)
         for index in range(len(template_ids)):
             prod_templates[index]['id'] = template_ids[index]
+            self.products.loc[self.products['NAME'].str.lower() == prod_templates[index]['name'].lower(),'product_tmpl_id'] = str(template_ids[index])
         self.product_templates = prod_templates
         # update whole table with product_product id
         self.update_product_id()
        
     
     def update_product_id(self):
-        prods = self._products
+        prods = self.products
         sb = self.sb
         product_product = modules.ProductProduct(self.conf)
-        prods['Product ID'] = product_product.get_product_product_list(None)
-        gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_cols])
-        prod_id = 0
+        prods['Product ID'] = product_product.create(prods.to_dict(orient='records'),self.attribute_values,self.attribute_columns,None)
+        gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_columns])
         for name,group in gp_prods:
-            _logger.debug(name)
-            _logger.debug(group[self.product_attribute_cols])
+            #_logger.debug(name)
+            #_logger.debug(group[self.product_attribute_columns])
             self.sb.loc[group.index.values,'External NAME'] = prods.loc[group.index.values[:1],'Product ID'].values
             _logger.debug(self.sb.loc[group.index.values,'External NAME'].values)    
             
@@ -271,15 +290,6 @@ class XLS(object):
             sample.loc[0,'Tracking'] = "By Unique Serial Number"
             final=pd.concat([final,sample])
         return final
-
-    def getProductTemplateId(self,df):
-        index = self._products.loc[self._products[self.product_attribute_cols].eq(df[self.product_attribute_cols]).all(axis='columns')>0,'index'].values
-        if(pd.isna(df['ORDERNO'])):
-            return
-        if(len(index) != 1):
-            raise Exception("Invalid Data - possible duplicate product Ids - length of index : " +str(index))
-        else:
-            return self._products.iloc[index[0]]['External NAME']
 
     def create_customers(self):
         cust = pd.DataFrame()
@@ -334,7 +344,7 @@ class XLS(object):
             po = modules.PurchaseOrder(self.conf)
             po.create(po_df.to_dict(orient = 'records'),None)
 
-            return self.create_purchase_orders_manual()
+            return
 
     def create_purchase_orders_manual(self):    
         po = pd.DataFrame()
@@ -353,7 +363,7 @@ class XLS(object):
     
     def create_vehicles(self):
         vehicle_df = pd.DataFrame()
-        vehicle_df[['name','chasis_no','ref','registration_no','product_id']] = self.sb[['ENGINE','CHASSIS','ORDERNO','TRNO','External NAME']]
+        vehicle_df[['name','chassis_no','ref','registration_no','product_id']] = self.sb[['ENGINE','CHASSIS','ORDERNO','TRNO','External NAME']]
         vehicle = modules.Vehicle(self.conf)
         vehicle.create(vehicle_df.to_dict(orient = 'records'),None)
 
@@ -388,7 +398,7 @@ class XLS(object):
         so_df[['name','date_order','product_id','line_name','price_unit','partner_id']] = self.sb[['ORDERNO','ORDERDATE','External NAME','NAME','EXSRPRICE','Customer/External ID']]
         so = modules.SaleOrder(self.conf)
         so.create(so_df.to_dict(orient = 'records'),None)
-        return self.create_sale_orders_manual()
+        return
 
     def create_sale_orders_manual(self):
         so = pd.DataFrame()
