@@ -58,7 +58,7 @@ class ProductAttributes(Module):
             record = {}
             record['name'] = attribute 
             record['type'] = 'select'
-            record['create_variant'] = 'always'
+            record['create_variant'] = 'dynamic'
             print(record)
             attribute_list.append(record)
         return attribute_list
@@ -88,5 +88,5 @@ class ProductAttributeValues(Module):
             name = values[lines]['name']
             vals = values[lines]['values']
             ids = model.create([{'attribute_id':attr_id,'name':vals[index]} for index in range(len(vals))])
-            res[name] = {'id':attr_id,'values':[(ids[index],vals[index]) for index in range(len(ids))]}
+            res[name] = {'id':attr_id,'values':{vals[index]:ids[index] for index in range(len(ids))}}
         return res

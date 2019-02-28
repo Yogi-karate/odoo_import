@@ -73,7 +73,7 @@ class ProductTemplate(Module):
 
     def _create_value_ids(self,product_values,attribute_values):    
         value_ids = []
-        value_id = [6,False,[x for x,y in attribute_values if y in product_values]]
+        value_id = [6,False,[attribute_values[x] for x in product_values]]
         value_ids.append(value_id)
         return value_ids
 
@@ -109,11 +109,36 @@ class ProductProduct(Module):
         model = odoo.env[self._name]
         ids = model.search(criteria)
         return ids
-
-    def create(self,values,odoo):
+    
+    def create(self,products,attributes,attribute_columns,odoo):
         if not odoo:
-            odoo = tools.login(conf['odoo'])
-        model = odoo.env[self._name]
-        for lines in range(len(values)):
-            for key,vals in values[lines].items():
-                model.create([{'attribute_id':key,'name':vals[index]} for index in range(len(vals))])
+            odoo = tools.login(self.conf['odoo'])
+        product_list = []
+        for product in products:
+            record = {}
+            record['name'] = product['NAME']
+            record['product_tmpl_id'] = product['product_tmpl_id']
+            record['attribute_value_ids'] = self.create_attribute_value_ids(product,attributes,attribute_columns)
+            product_list.append(record)
+        print(product_list)
+        self.model = odoo.env[self._name]
+        ids = self.model.create(product_list)
+        return ids
+
+    def create_attribute_value_ids(self,product,attributes,attribute_columns):
+        
+        value_ids = []
+        for column in attribute_columns:
+            print(product[column])
+            value_id = attributes[column]['values'][product[column]]
+            print(value_id)
+            value_ids.append(value_id)
+        return [(6,'_',value_ids)]
+
+    # def create(self,values,odoo):
+    #     if not odoo:
+    #         odoo = tools.login(conf['odoo'])
+    #     model = odoo.env[self._name]
+    #     for lines in range(len(values)):
+    #         for key,vals in values[lines].items():
+    #             model.create([{'attribute_id':key,'name':vals[index]} for index in range(len(vals))])
