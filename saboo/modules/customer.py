@@ -42,8 +42,6 @@ class Customer(Module):
         if not conf['attributes'] or not conf['odoo']:
             raise Exception("Cannot create attributes")
         self.conf = conf
-        self.max_records = int(conf['customers']['max_records'])
-        self.batch_size = int(conf['customers']['batch_size'])
     
     def get_customer_list(self):
         odoo = tools.login(self.conf['odoo'])
