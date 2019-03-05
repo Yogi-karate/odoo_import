@@ -37,7 +37,7 @@ _logger = logging.getLogger(__name__)
 class SalesStock(Command):
      
     def run(self,conf):
-        client.update_config('Modules','name','sales_inventory') 
+        client.update_config('Modules','name','sale_inventory') 
         _logger.warn("Running inventory should be preceded by purchase and sales order creations")
         if  conf['xls']:
             xls = saboo.XLS(conf)
