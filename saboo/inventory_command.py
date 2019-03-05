@@ -34,7 +34,7 @@ from .tools import login,batcher,get_thread_conf
 
 _logger = logging.getLogger(__name__)
 
-class SalesInventory(Command):
+class SalesStock(Command):
      
     def run(self,conf):
         client.update_config('Modules','name','sales_inventory') 
@@ -44,7 +44,7 @@ class SalesInventory(Command):
             _logger.debug("The xl file read in is "+ str(xls.sb['ORDERNO'].count()))
             xls.execute()
 
-class PurchaseInventory(Command):
+class PurchaseStock(Command):
      
     def run(self,conf):
         client.update_config('Modules','name','purchase_inventory') 
