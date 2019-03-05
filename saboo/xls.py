@@ -366,19 +366,25 @@ class XLS(object):
         vehicle_df[['name','chassis_no','ref','registration_no','product_id']] = self.sb[['ENGINE','CHASSIS','ORDERNO','TRNO','External NAME']]
         vehicle = modules.Vehicle(self.conf)
         vehicle.create(vehicle_df.to_dict(orient = 'records'),None)
-
-    def create_inventory(self):
+    
+    def init_inventory:
         inventory_df = pd.DataFrame()
         inventory_df[['order_no','vehicle']] = self.sb[['ORDERNO','ENGINE']]
+        return inventory_df
+            
+    def create_inventory(self):
+        inventory_df = init_inventory()
         self.create_purchase_inventory(inventory_df)
         _logger.debug("Starting Sale Order Inventory")
         self.create_sale_inventory(inventory_df)
 
-    def create_purchase_inventory(self,df):
+    def create_purchase_inventory(self):
+        df = init_inventory()
         inventory = modules.Inventory(self.conf)
         inventory.confirm_purchase_orders(df.to_dict(orient = 'records'),None)
 
-    def create_sale_inventory(self,df):
+    def create_sale_inventory(self):
+        df = init_inventory()
         inventory = modules.Inventory(self.conf)
         inventory.confirm_sale_orders(df.to_dict(orient = 'records'),None)
 
