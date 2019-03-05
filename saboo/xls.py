@@ -373,18 +373,18 @@ class XLS(object):
         return inventory_df
             
     def create_inventory(self):
-        inventory_df = init_inventory()
+        inventory_df = self.init_inventory()
         self.create_purchase_inventory(inventory_df)
         _logger.debug("Starting Sale Order Inventory")
         self.create_sale_inventory(inventory_df)
 
     def create_purchase_inventory(self):
-        df = init_inventory()
+        df = self.init_inventory()
         inventory = modules.Inventory(self.conf)
         inventory.confirm_purchase_orders(df.to_dict(orient = 'records'),None)
 
     def create_sale_inventory(self):
-        df = init_inventory()
+        df = self.init_inventory()
         inventory = modules.Inventory(self.conf)
         inventory.confirm_sale_orders(df.to_dict(orient = 'records'),None)
 
