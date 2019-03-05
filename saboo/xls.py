@@ -367,7 +367,7 @@ class XLS(object):
         vehicle = modules.Vehicle(self.conf)
         vehicle.create(vehicle_df.to_dict(orient = 'records'),None)
     
-    def init_inventory:
+    def init_inventory(self):
         inventory_df = pd.DataFrame()
         inventory_df[['order_no','vehicle']] = self.sb[['ORDERNO','ENGINE']]
         return inventory_df
