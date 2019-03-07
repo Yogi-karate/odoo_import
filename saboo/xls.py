@@ -150,6 +150,7 @@ class XLS(object):
         columns = self.get_all_columns()
         for column in columns:
             _logger.debug("The column to fillna is " + column)
+            self.sb[column] = self.sb[column].str.strip()
             self.sb[column] = self.sb[column].fillna('')
 
 
