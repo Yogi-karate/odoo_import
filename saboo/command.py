@@ -53,6 +53,15 @@ class OrderConfirm():
         _logger.debug("Number of orders to confirm : " + str(len(ids)))
         odoo.run(name,self.method,ids)
 
+class ProductXls(Command):
+    command = 'product'
+    def run(self,conf):
+        if  conf['xls']:
+            odoo = login(conf['odoo'])
+            xls = saboo.ProductXLS(conf)
+            _logger.debug("The xl file read in is "+ str(xls.sb['NAME'].count()))
+            xls.execute() 
+
 class Xls(Command):
     command = 'xls'
     def run(self,conf):

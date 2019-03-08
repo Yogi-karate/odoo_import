@@ -61,6 +61,7 @@ class ProductTemplate(Module):
             record['tracking'] = 'serial'
             record['attribute_line_ids'] = self._create_attribute_lines(product['values'],attribute_values)
             product_list.append(record)
+        print(product_list)
         return product_list
     
     def _create_attribute_lines(self,product_values,attribute_values):

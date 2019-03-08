@@ -34,7 +34,7 @@ from .module import Module
 from .field import Field
 from .purchase_order import PurchaseOrder
 from .sale_order import SaleOrder
-from .product_attributes import ProductAttributes
+from .product_attributes import ProductAttributes,ProductAttributeValues
 from .product import ProductTemplate
 from .product import ProductProduct
 from .customer import Customer,Vendor,Lead

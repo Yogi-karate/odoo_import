@@ -77,6 +77,29 @@ class ProductAttributeValues(Module):
 
     def __init__(self,conf):
         self.conf = conf
+   
+    def get_attribute_values(self,odoo):
+        if not odoo:
+            odoo = tools.login(self.conf['odoo'])
+        conf = self.conf['attributes']
+        if not conf['columns'] or not conf['fields']:
+            raise Exception("Invalid Configuration - Cannot find Attributes to create")
+        columns = conf['columns'].upper().split(',')
+        model = odoo.env[self._name]
+        res = {}
+        for column in columns:
+            attr = odoo.env['product.attribute']
+            attr_id = attr.search([('name','=',column)],limit=1)
+            value_ids = attr.browse(attr_id).value_ids
+            if value_ids:
+                values = []
+                for value_id in value_ids:
+                    print(value_id)
+                    print(value_id.name)
+                    values.append(value_id.name)
+                res[column] = {'id':attr_id[0],'values':{values[index]:value_ids[index].id for index in range(len(value_ids))}}
+        return res
+
 
     def create(self,values,odoo):
         if not odoo:

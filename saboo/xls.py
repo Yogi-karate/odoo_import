@@ -31,6 +31,7 @@ import saboo.modules as modules
 
 _logger = logging.getLogger(__name__)
 
+
 class XLS(object):
     sb = None
     xlsx = None
@@ -52,13 +53,15 @@ class XLS(object):
                 self.root = self.root+'/'
             self.path = self.root+conf['xls']['xl_file']
             self.modules = conf['Modules']['name'].split(',')
+            self.sheet = conf['xls']['sheet_name']
         else:
             _logger.error("Invalid Configuration - Cannot execute")
             raise Exception("Cannot process excel file")    
         self.xlsx = pd.ExcelFile(self.path or saboo_path)
-        self.original = pd.read_excel(self.xlsx, 'Sale',converters = self.get_all_columns())
+        self.original = pd.read_excel(self.xlsx,self.sheet,converters = self.get_all_columns())
         self.sb = self.original
-        self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
+        if 'purchase_orders' in self.modules:
+            self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
         self.prepare()
     
     def column_converters(self,attr):
@@ -87,7 +90,9 @@ class XLS(object):
         # need to dynamically load all fields - to do - CHANGE this !!!!
         #print(dict(self._product_columns.items()+self._attribute_columns.items()))
         all_cols = {}
-        models = ['product','customer','attribute','order']
+        models = self.conf['xls']['column_models'].split(',')
+        if not models:
+            models = ['product','customer','attribute','order']
         for val in models:
             all_cols.update(self.column_converters(val))
         return all_cols
@@ -177,6 +182,7 @@ class XLS(object):
 
 
     def prepareProducts(self):
+        
         sb = self.sb
         sb.loc[:,'External NAME'] = ""
         gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_columns])
@@ -193,13 +199,17 @@ class XLS(object):
 
     
     def prepareCustomers(self):
-        sb = self.sb
-        sb['Customer/External ID'] = sb.index
-        sb['Customer/External ID'] =sb['Customer/External ID'].apply(lambda index: "customer_template_"+str(index))
-        sb.loc[:,'CDUP'] = sb.duplicated(self.customer_attribute_columns,False).values
-        gp_cust = sb[sb['CDUP'] == True].groupby(self.customer_attribute_columns,sort=False)
-        for name,group in gp_cust:
-            group.loc[group.index.values[1:],'Customer/External ID'] = group.loc[group.index.values[:1],'Customer/External ID'].values[0]
+        if 'customer' in self.modules:
+            sb = self.sb
+            sb['Customer/External ID'] = sb.index
+            sb['Customer/External ID'] =sb['Customer/External ID'].apply(lambda index: "customer_template_"+str(index))
+            sb.loc[:,'CDUP'] = sb.duplicated(self.customer_attribute_columns,False).values
+            gp_cust = sb[sb['CDUP'] == True].groupby(self.customer_attribute_columns,sort=False)
+            for name,group in gp_cust:
+                group.loc[group.index.values[1:],'Customer/External ID'] = group.loc[group.index.values[:1],'Customer/External ID'].values[0]
+        else:
+            _logger.debug("No customer prep needed")
+
     
     def deduplicate(self,sb,list_cols):
         dedup = pd.DataFrame()
@@ -214,11 +224,11 @@ class XLS(object):
 
     def execute(self):
         if self._valid:
-            _logger.info("Processing "+str(self.sb['ORDERNO'].count())+" Records")
+            #_logger.info("Processing "+str(self.sb['ORDERNO'].count())+" Records")
             _logger.info("The modules to be executed are " + str(self.modules) + " in mode " + self._mode)
             for module in self.modules:
                # module = self.modules[key]
-                method = 'create_'+module
+                method = 'create_'+module+'s'
                 if self._mode is 'manual':
                     method  = method+'_manual'
                 _logger.info("START CREATING ---> "+module.upper())
@@ -419,3 +429,24 @@ class XLS(object):
         so['External ID'] = so.reset_index()['index'].apply(lambda index: "sale_order_template_"+str(index))
         #so = self.deduplicate(so,['ORDER REFERENCE'])
         return so
+
+class ProductXLS(XLS):
+      
+    def _validate(self):
+        sb = self.sb
+        self._errored = sb[sb['NAME'].isna() | sb['VARIANT'].isna() | sb['COLOR'].isna()] 
+        if(len(self._errored.index)>0):
+            _logger.error("Sheet has " + str(len(self._errored.index))+" invalid records")
+            self.sb = sb.drop(self._errored.index.values)
+            # Cleaning up indexes
+            self.sb.reset_index(drop=True)
+            _logger.info("Total Records to be processes are " + str(len(sb.index)))
+            self.write(self._errored,'errors')
+        else:   
+            return True    
+    
+    def create_new_products(self):
+        attributes = modules.ProductAttributeValues(self.conf)
+        self.attribute_values = attributes.get_attribute_values(None)
+        self.create_products()
+        self.write(self.sb,'new_products')       
