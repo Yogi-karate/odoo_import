@@ -60,7 +60,7 @@ class XLS(object):
         self.xlsx = pd.ExcelFile(self.path or saboo_path)
         self.original = pd.read_excel(self.xlsx,self.sheet,converters = self.get_all_columns())
         self.sb = self.original
-        if 'purchase_orders' in self.modules:
+        if 'purchase_order' in self.modules:
             self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
         self.prepare()
     
