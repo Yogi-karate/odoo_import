@@ -60,6 +60,15 @@ class ProductXls(Command):
             odoo = login(conf['odoo'])
             xls = saboo.ProductXLS(conf)
             _logger.debug("The xl file read in is "+ str(xls.sb['NAME'].count()))
+            xls.execute()
+
+class Pricelist(Command):
+    command = 'pricelist'
+    def run(self,conf):
+        if  conf['xls']:
+            odoo = login(conf['odoo'])
+            xls = saboo.PricelistXLS(conf)
+            _logger.debug("The xl file read in is "+ str(len(xls.sb.keys())))
             xls.execute() 
 
 class Xls(Command):

@@ -30,7 +30,7 @@ __email__ = 'ram.tangirala@gmail.com'
 __licence__ = 'LGPL v3'
 __version__ = '0.0.1'
 
-from .xls import XLS,ProductXLS
+from .xls import XLS,ProductXLS,PricelistXLS
 from .odoo import Odoo
 from . import tools
 from . import client

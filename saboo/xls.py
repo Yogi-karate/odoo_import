@@ -449,4 +449,83 @@ class ProductXLS(XLS):
         attributes = modules.ProductAttributeValues(self.conf)
         self.attribute_values = attributes.get_attribute_values(None)
         self.create_products()
-        self.write(self.sb,'new_products')       
+        self.write(self.sb,'new_products')
+
+class PricelistXLS(XLS):
+
+    def __init__(self, conf,saboo_path='Saboo_data.xlsx',
+                 sheet='None'):
+        if conf and conf['xls'] and conf['xls']['root'] and conf['Modules']['name']:
+            self.conf = conf
+            self.root = conf['xls']['root']
+            if not self.root.endswith('/'):
+                self.root = self.root+'/'
+            self.path = self.root+conf['xls']['xl_file']
+            self.modules = conf['Modules']['name'].split(',')
+            self.sheet = conf['xls']['sheet_name']
+        else:
+            _logger.error("Invalid Configuration - Cannot execute")
+            raise Exception("Cannot process excel file")    
+        self.xlsx = pd.ExcelFile(self.path or saboo_path)
+        self.original = pd.read_excel(self.xlsx,sheet_name=None)
+        self.sb = self.original
+
+    def prepare(self,sheet):
+        if self._validate(sheet):
+            model = sheet.iloc[:,1:]
+            pricelist_columns = list(model.iloc[2:3,5:].values[0])
+            model = model[4:]
+            model = model.reset_index(drop=True)
+            pricelist_columns.insert(0,'Model')
+            pricelist_columns.insert(1,'Variant')
+            pricelist_columns.insert(2,'Color-Variant')
+            pricelist_columns.insert(3,'Variant-1')
+            pricelist_columns.insert(4,'Ex S/R Price')
+            model.columns = pricelist_columns
+            model = model[:model[pd.isna(model).all(axis=1)][:1].index[0]+2]
+            model.loc[:,'Model'] = pd.Series(model['Model'].fillna(method='ffill'))
+            model.loc[:,'Variant'] = pd.Series(model['Variant'].fillna(method='ffill'))
+            model.loc[:,'Variant-1'] = pd.Series(model['Variant-1'].fillna(method='ffill'))
+            return model
+        else:
+            return False
+
+    def _validate(self,sheet):
+        if not len(sheet.columns) == 15:
+            return False
+        return True    
+
+    def execute(self):
+        self.create_price_list()
+        for sheet in self.sb:
+            _logger.debug("The sheet is %s",sheet)
+            self.create_pricelist_items(self.sb[sheet])
+    
+    def getColors(self,sheet):
+        colors = sheet[sheet[sheet.columns[0]].str.contains('Colour')==True].iloc[:,1:2]
+        if not colors.empty and colors.values[0]:    
+            col_array = colors.values[0][0].split(':')
+            print("the array is ",col_array)
+            if col_array and len(col_array) >2:
+                #handle metallic and nonmetallic 
+                mcolors = col_array[1].strip().split(',')
+                return {'Metallic':mcolors[:len(mcolors)-1],'NonMetallic':col_array[2].strip() or False}
+            if col_array and len(col_array) ==1:
+                #handle colors for all variants
+                return {'Colors':col_array[0].strip().split(',')}
+
+    def create_price_list(self):
+        _logger.info("Hello from prcielist Creation")     
+        pricelist = modules.Pricelist(self.conf)
+        pricelist.create("Sample2",1,None)
+
+    def create_pricelist_items(self,sheet):
+        # remove the first unwanted column
+        model = self.prepare(sheet)
+        colors = self.getColors(model)
+        print("The colors are ",colors)
+        if not model.empty and colors:
+            print("the columns in the sheet ",model.iloc[:2,:3])
+        else:
+            print("Error while preparing sheet")
+
