@@ -471,61 +471,96 @@ class PricelistXLS(XLS):
         self.sb = self.original
 
     def prepare(self,sheet):
-        if self._validate(sheet):
-            model = sheet.iloc[:,1:]
-            pricelist_columns = list(model.iloc[2:3,5:].values[0])
-            model = model[4:]
-            model = model.reset_index(drop=True)
-            pricelist_columns.insert(0,'Model')
-            pricelist_columns.insert(1,'Variant')
-            pricelist_columns.insert(2,'Color-Variant')
-            pricelist_columns.insert(3,'Variant-1')
-            pricelist_columns.insert(4,'Ex S/R Price')
-            model.columns = pricelist_columns
-            model = model[:model[pd.isna(model).all(axis=1)][:1].index[0]+2]
-            model.loc[:,'Model'] = pd.Series(model['Model'].fillna(method='ffill'))
-            model.loc[:,'Variant'] = pd.Series(model['Variant'].fillna(method='ffill'))
-            model.loc[:,'Variant-1'] = pd.Series(model['Variant-1'].fillna(method='ffill'))
-            return model
-        else:
-            return False
+        model = sheet.iloc[:,1:]
+        pricelist_columns = list(model.iloc[2:3,5:].values[0])
+        model = model[4:]
+        model = model.reset_index(drop=True)
+        pricelist_columns.insert(0,'Model')
+        pricelist_columns.insert(1,'Variant')
+        pricelist_columns.insert(2,'Color-Variant')
+        pricelist_columns.insert(3,'Variant-1')
+        pricelist_columns.insert(4,'Ex S/R Price')
+        model.columns = pricelist_columns
+        print(model[model['Model'].str.upper().str.contains('COLOUR')==True].index.values[0])
+        self.color_row = model[model['Model'].str.upper().str.contains('COLOUR')==True]
+        print(self.color_row)
+        model = model[:self.color_row.index.values[0]-2]
+        model.drop(model[model.isna().all(axis=1)==True].index.values)
+        model.loc[:,'Model'] = pd.Series(model['Model'].fillna(method='ffill'))
+        model.loc[:,'Variant'] = pd.Series(model['Variant'].fillna(method='ffill'))
+        model.loc[:,'Variant-1'] = pd.Series(model['Variant-1'].fillna(method='ffill'))
+        return model
 
     def _validate(self,sheet):
-        if not len(sheet.columns) == 15:
+        header_row = sheet.iloc[1,:].fillna("").astype(str)
+        header_row = [x.upper() for x in header_row.values]
+        header_column = sheet[sheet.columns[1]].str.upper()
+        if 'MODEL' in header_row and header_row[6] and 'EX' in header_row[6] and header_column.str.contains('COLOUR').any():
+            return True
+        else:
+            print("Invalid Sheet",len(sheet.columns))
             return False
-        return True    
+        return False
 
     def execute(self):
-        self.create_price_list()
+        #self.create_price_list()
         for sheet in self.sb:
             _logger.debug("The sheet is %s",sheet)
-            self.create_pricelist_items(self.sb[sheet])
+            if self._validate(self.sb[sheet]):
+                self.create_pricelist_items(self.sb[sheet])
     
     def getColors(self,sheet):
-        colors = sheet[sheet[sheet.columns[0]].str.contains('Colour')==True].iloc[:,1:2]
-        if not colors.empty and colors.values[0]:    
-            col_array = colors.values[0][0].split(':')
-            print("the array is ",col_array)
+        colors = self.color_row.values[0][1]
+        if colors:    
+            col_array = colors.split(':')
             if col_array and len(col_array) >2:
                 #handle metallic and nonmetallic 
                 mcolors = col_array[1].strip().split(',')
-                return {'Metallic':mcolors[:len(mcolors)-1],'NonMetallic':col_array[2].strip() or False}
+                if type(col_array[2].strip()) is str:
+                    nonm = [col_array[2].strip()]
+                else:
+                    nonm = col_array[2].strip()
+                return {'Metallic':mcolors[:len(mcolors)-1],'NonMetallic':nonm or False}
             if col_array and len(col_array) ==1:
                 #handle colors for all variants
                 return {'Colors':col_array[0].strip().split(',')}
 
+    def transform_variant_colors(self,model,colors):
+        c_model = pd.DataFrame()
+        print(colors)
+        for index in model.index.values:
+            row = model.loc[index:index,:]
+            if  'Colors' in colors and row['Color-Variant'].isna().values[0]:
+                for color in colors['Colors']:
+                    if color:
+                        row.loc[:,'Color'] = color.strip()
+                        c_model = c_model.append(row,ignore_index=True)
+            else:
+                if row['Color-Variant'].values[0] == 'M':
+                    for color in colors['Metallic']:
+                        if color:
+                            row.loc[:,'Color'] = color.strip()
+                            c_model = c_model.append(row,ignore_index=True)
+                if row['Color-Variant'].values[0] == 'NM':
+                    for color in colors['NonMetallic']:
+                        if color:
+                            row.loc[:,'Color'] = color.strip()
+                            c_model = c_model.append(row,ignore_index=True)
+        return c_model
+
     def create_price_list(self):
-        _logger.info("Hello from prcielist Creation")     
         pricelist = modules.Pricelist(self.conf)
         pricelist.create("Sample2",1,None)
 
     def create_pricelist_items(self,sheet):
         # remove the first unwanted column
         model = self.prepare(sheet)
-        colors = self.getColors(model)
-        print("The colors are ",colors)
-        if not model.empty and colors:
+        if not model.empty:
+            colors = self.getColors(model)
+            print("The colors are ",colors)
+            model = self.transform_variant_colors(model,colors)
             print("the columns in the sheet ",model.iloc[:2,:3])
         else:
             print("Error while preparing sheet")
+        return model
 
