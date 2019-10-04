@@ -39,6 +39,6 @@ from .product import ProductTemplate
 from .product import ProductProduct
 from .customer import Customer,Vendor,Lead
 from .vehicle import Vehicle,Inventory
-from .pricelist import Pricelist,PricelistItem
+from .pricelist import Pricelist,PricelistItem,PricelistComponent,PriceListComponentType
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

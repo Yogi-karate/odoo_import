@@ -501,13 +501,23 @@ class PricelistXLS(XLS):
             print("Invalid Sheet",len(sheet.columns))
             return False
         return False
+    def handle_request(self,file):
+        self.xlsx = pd.ExcelFile(file)
+        self.original = pd.read_excel(self.xlsx,sheet_name=None)
+        self.sb = self.original
+        print(self.sb['EON'][1:4].to_dict(orient='records'))
+        return self.sb['EON'][1:4].to_dict(orient='records')[0]
 
     def execute(self):
-        #self.create_price_list()
+        pricelist_items = modules.PricelistItem(self.conf)
+        pricelist_id = self.create_price_list()
+        print("the pricelist created is ",pricelist_id)
         for sheet in self.sb:
             _logger.debug("The sheet is %s",sheet)
             if self._validate(self.sb[sheet]):
-                self.create_pricelist_items(self.sb[sheet])
+                model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
+                pricelist_items.create(model.to_dict(orient='records'),pricelist_id,None)
+
     
     def getColors(self,sheet):
         colors = self.color_row.values[0][1]
@@ -550,17 +560,17 @@ class PricelistXLS(XLS):
 
     def create_price_list(self):
         pricelist = modules.Pricelist(self.conf)
-        pricelist.create("Sample2",1,None)
+        return pricelist.create("Sample2",1,None)
 
-    def create_pricelist_items(self,sheet):
+    def create_pricelist_items(self,sheet,pricelist_id):
         # remove the first unwanted column
         model = self.prepare(sheet)
         if not model.empty:
             colors = self.getColors(model)
             print("The colors are ",colors)
             model = self.transform_variant_colors(model,colors)
-            print("the columns in the sheet ",model.iloc[:2,:3])
+            print("The price list is",pricelist_id)
+            return model
         else:
             print("Error while preparing sheet")
-        return model
 
