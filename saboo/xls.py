@@ -471,25 +471,31 @@ class PricelistXLS(XLS):
         self.sb = self.original
 
     def prepare(self,sheet):
-        model = sheet.iloc[:,1:]
-        pricelist_columns = list(model.iloc[2:3,5:].values[0])
-        model = model[4:]
-        model = model.reset_index(drop=True)
-        pricelist_columns.insert(0,'Model')
-        pricelist_columns.insert(1,'Variant')
-        pricelist_columns.insert(2,'Color-Variant')
-        pricelist_columns.insert(3,'Variant-1')
-        pricelist_columns.insert(4,'Ex S/R Price')
-        model.columns = pricelist_columns
-        print(model[model['Model'].str.upper().str.contains('COLOUR')==True].index.values[0])
-        self.color_row = model[model['Model'].str.upper().str.contains('COLOUR')==True]
-        print(self.color_row)
-        model = model[:self.color_row.index.values[0]-2]
-        model.drop(model[model.isna().all(axis=1)==True].index.values)
-        model.loc[:,'Model'] = pd.Series(model['Model'].fillna(method='ffill'))
-        model.loc[:,'Variant'] = pd.Series(model['Variant'].fillna(method='ffill'))
-        model.loc[:,'Variant-1'] = pd.Series(model['Variant-1'].fillna(method='ffill'))
-        return model
+        try:
+            model = sheet.iloc[:,1:]
+            print(model.iloc[2,5:].values)
+            pricelist_columns = [ " ".join(x.split()) for x in model.iloc[2,5:].str.values]
+            model = model[4:]
+            model = model.reset_index(drop=True)
+            pricelist_columns.insert(0,'Model')
+            pricelist_columns.insert(1,'Variant')
+            pricelist_columns.insert(2,'Color-Variant')
+            pricelist_columns.insert(3,'Variant-1')
+            pricelist_columns.insert(4,'Ex S/R Price')
+            model.columns = pricelist_columns
+            print(model[model['Model'].str.upper().str.contains('COLOUR')==True].index.values[0])
+            self.color_row = model[model['Model'].str.upper().str.contains('COLOUR')==True]
+            print(self.color_row)
+            model = model[:self.color_row.index.values[0]-2]
+            model.drop(model[model.isna().all(axis=1)==True].index.values)
+            model.loc[:,'Model'] = pd.Series(model['Model'].fillna(method='ffill'))
+            model.loc[:,'Variant'] = pd.Series(model['Variant'].fillna(method='ffill'))
+            model.loc[:,'Variant-1'] = pd.Series(model['Variant-1'].fillna(method='ffill'))
+            return model
+        except Exception as ex:
+            _logger.exception(ex)
+            return pd.DataFrame()
+        
 
     def _validate(self,sheet):
         header_row = sheet.iloc[1,:].fillna("").astype(str)
