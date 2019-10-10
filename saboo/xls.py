@@ -474,7 +474,7 @@ class PricelistXLS(XLS):
         try:
             model = sheet.iloc[:,1:]
             print(model.iloc[2,5:].values)
-            pricelist_columns = [ " ".join(x.split()) for x in model.iloc[2,5:].str.values]
+            pricelist_columns = [ " ".join(x.split()) for x in model.iloc[2,5:].values]
             model = model[4:]
             model = model.reset_index(drop=True)
             pricelist_columns.insert(0,'Model')
@@ -522,7 +522,11 @@ class PricelistXLS(XLS):
             _logger.debug("The sheet is %s",sheet)
             if self._validate(self.sb[sheet]):
                 model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
-                pricelist_items.create(model.to_dict(orient='records'),pricelist_id,None)
+                if not model.empty:
+                    pricelist_items.create(model.to_dict(orient='records'),pricelist_id,None)
+                else:
+                    _logger.error("Something Worong happened")
+                    
 
     
     def getColors(self,sheet):
@@ -579,4 +583,6 @@ class PricelistXLS(XLS):
             return model
         else:
             print("Error while preparing sheet")
+            return pd.DataFrame()
+
 

@@ -117,11 +117,11 @@ class PricelistItem(Module):
 
     _name = 'pricelist.item'
     _field_list = {"applied_on":"0_product_variant","min_quantity":0,"compute_price":"fixed","base":"list_price","price_discount":0,"pricelist_id":66,"product_id":2011,"date_start":"2019-10-07","date_end":"2019-10-10","fixed_price":2500000,"percent_price":0}
-    sample = {'Model': 'CRETA', 'Variant': 'VTVT SX', 'Color-Variant': nan, 'Variant-1': '1.6 VTVT', 'Ex S/R Price': 1226078, 
-    'Life Tax': 175420, 'TCS': 12260.78, 'Hyundai Assurance': 72939.33372712, 'Handling charges': 3000, 
-    'ON-ROAD Price': 1489698.11372712, 'P.REG. CHARGES (Optional)': 3150, 'NIL DEP INSURANCE': 81873.15107412, 
-    'Basic kit': 1564, 'Extended Warranty ': 8449, 'Addnl for  Nill Dep. Insurance': 8933.817347000004, 
-    'Color': 'Marine Blue (S8U).Typhone Silver (T2X)'}
+    # sample = {'Model': 'CRETA', 'Variant': 'VTVT SX', 'Color-Variant': nan, 'Variant-1': '1.6 VTVT', 'Ex S/R Price': 1226078, 
+    # 'Life Tax': 175420, 'TCS': 12260.78, 'Hyundai Assurance': 72939.33372712, 'Handling charges': 3000, 
+    # 'ON-ROAD Price': 1489698.11372712, 'P.REG. CHARGES (Optional)': 3150, 'NIL DEP INSURANCE': 81873.15107412, 
+    # 'Basic kit': 1564, 'Extended Warranty ': 8449, 'Addnl for  Nill Dep. Insurance': 8933.817347000004, 
+    # 'Color': 'Marine Blue (S8U).Typhone Silver (T2X)'}
     def __init__(self,conf):
         self.conf = conf
         self.components = PriceListComponentType(self.conf).getComponents()
