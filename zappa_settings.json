@@ -1,0 +1,9 @@
+{
+    "dev": {
+        "s3_bucket": "fupload.zappa",
+        "app_function": "sample.app",
+        "aws_region":"ap-south-1"
+        
+          
+    }
+}

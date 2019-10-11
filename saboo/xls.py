@@ -466,9 +466,9 @@ class PricelistXLS(XLS):
         else:
             _logger.error("Invalid Configuration - Cannot execute")
             raise Exception("Cannot process excel file")    
-        self.xlsx = pd.ExcelFile(self.path or saboo_path)
-        self.original = pd.read_excel(self.xlsx,sheet_name=None)
-        self.sb = self.original
+        # self.xlsx = pd.ExcelFile(self.path or saboo_path)
+        # self.original = pd.read_excel(self.xlsx,sheet_name=None)
+        # self.sb = self.original
 
     def prepare(self,sheet):
         try:
@@ -511,6 +511,7 @@ class PricelistXLS(XLS):
         self.xlsx = pd.ExcelFile(file)
         self.original = pd.read_excel(self.xlsx,sheet_name=None)
         self.sb = self.original
+        self.execute()
         print(self.sb['EON'][1:4].to_dict(orient='records'))
         return self.sb['EON'][1:4].to_dict(orient='records')[0]
 
@@ -570,7 +571,7 @@ class PricelistXLS(XLS):
 
     def create_price_list(self):
         pricelist = modules.Pricelist(self.conf)
-        return pricelist.create("Sample2",1,None)
+        return pricelist.create("Pricelist",1,None)
 
     def create_pricelist_items(self,sheet,pricelist_id):
         # remove the first unwanted column

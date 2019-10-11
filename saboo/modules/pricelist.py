@@ -115,8 +115,10 @@ class PricelistComponent(Module):
 
 class PricelistItem(Module):
 
-    _name = 'pricelist.item'
-    _field_list = {"applied_on":"0_product_variant","min_quantity":0,"compute_price":"fixed","base":"list_price","price_discount":0,"pricelist_id":66,"product_id":2011,"date_start":"2019-10-07","date_end":"2019-10-10","fixed_price":2500000,"percent_price":0}
+    _name = 'product.pricelist.item'
+    _field_list = {"applied_on":"0_product_variant","min_quantity":0,"compute_price":"fixed",
+    "base":"list_price","price_discount":0,"pricelist_id":66,"product_id":2011,
+    "date_start":"2019-10-07","date_end":"2019-10-10","fixed_price":2500000,"percent_price":0}
     # sample = {'Model': 'CRETA', 'Variant': 'VTVT SX', 'Color-Variant': nan, 'Variant-1': '1.6 VTVT', 'Ex S/R Price': 1226078, 
     # 'Life Tax': 175420, 'TCS': 12260.78, 'Hyundai Assurance': 72939.33372712, 'Handling charges': 3000, 
     # 'ON-ROAD Price': 1489698.11372712, 'P.REG. CHARGES (Optional)': 3150, 'NIL DEP INSURANCE': 81873.15107412, 
@@ -125,7 +127,7 @@ class PricelistItem(Module):
     def __init__(self,conf):
         self.conf = conf
         self.components = PriceListComponentType(self.conf).getComponents()
-        print(self.components)
+        print("components",self.components)
         
     def findProduct(self,model,variant,color):
         model_name = 'product.product'
@@ -139,6 +141,14 @@ class PricelistItem(Module):
             odoo = tools.login(self.conf['odoo'])
         product_list = []
         print('The pricelist to be added to is',pricelist_id,len(items))
-        
+        model_name = 'product.product'
+        self.model = odoo.env[self._name]
         for pricelist in items:
-            print(pricelist)
+            # product_id =  self.findProduct(pricelist['Model'], str(pricelist['Variant'])+str(pricelist['Variant-1']), pricelist['Color'])
+            # pricelist.update({"product_id":product_id})
+            fields = self._field_list
+            fields.update({"fixed_price":str(pricelist['Ex S/R Price']), "pricelist_id":pricelist_id})
+            price_list_item_id = self.model.create(fields)
+            print("pricelist id",price_list_item_id)
+            #return ids
+
