@@ -526,13 +526,13 @@ class PricelistXLS(XLS):
         count=1
         for sheet in self.sb:
             _logger.debug("The sheet is %s",sheet)
-            if self._validate(self.sb[sheet]) and count == 1:
+            if self._validate(self.sb[sheet]):
                 model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
                 if not model.empty:
                     pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(self.sb[sheet]),None)
                 else:
                     _logger.error("Something Worong happened")
-            count+=1
+            
                     
     
     def getColors(self,sheet):
