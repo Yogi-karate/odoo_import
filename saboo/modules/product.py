@@ -49,34 +49,70 @@ class ProductTemplate(Module):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
-        ids = self.model.create(self._create_records(products,attribute_values))
+        ids = self._create_records(products,attribute_values,self.model)
+        print(ids,">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         return ids
 
-    def _create_records(self,products,attribute_values):
+    def _create_records(self,products,attribute_values,model):
         product_list = []
         for product in products:
-            record = {}
-            record['name'] = product['name'] 
-            record['type'] = 'product'
-            record['tracking'] = 'serial'
-            record['attribute_line_ids'] = self._create_attribute_lines(product['values'],attribute_values)
-            product_list.append(record)
-        print(product_list)
+            pro = model.search([('name','=',product['name'])])
+            if len(pro) <= 0:
+                record = {}
+                record['name'] = product['name'] 
+                record['type'] = 'product'
+                record['tracking'] = 'serial'
+                record['attribute_line_ids'] = self._create_attribute_lines(product['values'],attribute_values,[])
+                x = model.create(record)
+                product_list.append(x)
+            else:
+                record = {}
+                record['attribute_line_ids'] = self._create_attribute_lines(product['values'],attribute_values,pro)
+                model.write(pro,record)
+                product_list.append(pro[0])
         return product_list
     
-    def _create_attribute_lines(self,product_values,attribute_values):
+    def _create_attribute_lines(self,product_values,attribute_values,pro):
         attribute_lines = []
         for vals in product_values:
             attribute,values = vals
-            attribute_line = [0,'_',{'attribute_id':attribute_values[attribute]['id'],'value_ids':self._create_value_ids(values,attribute_values[attribute]['values'])}]
-            attribute_lines.append(attribute_line)  
+            if len(pro) > 0:
+                    od = tools.login(self.conf['odoo'])
+                    model = od.env['product.template.attribute.value']
+                    mod = od.env['product.template.attribute.line']
+                    pro_att_val = od.env['product.attribute.value']
+                    line = mod.search([('product_tmpl_id','=',pro[0]),('attribute_id','=',attribute_values[attribute]['id'])])
+                    if len(line) <= 0:
+                        attribute_line = [0,'_',{'attribute_id':attribute_values[attribute]['id'],'value_ids':self._create_value_ids(values,attribute_values[attribute]['values'],pro,attribute_values[attribute]['id'])}]
+                        attribute_lines.append(attribute_line) 
+                    else:
+                        attribute_line = [1,line[0],{'attribute_id':attribute_values[attribute]['id'],'value_ids':self._create_value_ids(values,attribute_values[attribute]['values'],pro,attribute_values[attribute]['id'])}]
+                        attribute_lines.append(attribute_line) 
+            else:
+                    attribute_line = [0,'_',{'attribute_id':attribute_values[attribute]['id'],'value_ids':self._create_value_ids(values,attribute_values[attribute]['values'],pro,attribute_values[attribute]['id'])}]
+                    attribute_lines.append(attribute_line)  
         return attribute_lines
 
-    def _create_value_ids(self,product_values,attribute_values):    
-        value_ids = []
-        value_id = [6,False,[attribute_values[x] for x in product_values]]
-        value_ids.append(value_id)
-        return value_ids
+    def _create_value_ids(self,product_values,attribute_values,pro,attribute_id):
+            od = tools.login(self.conf['odoo'])
+            mod = od.env['product.template.attribute.line']
+            value_ids = []
+            temp = []
+            if len(pro)>0:
+                val_ids = mod.search_read([('product_tmpl_id','=',pro[0]),('attribute_id','=',attribute_id)])
+                for val_id in val_ids:
+                    for i in val_id['value_ids']:
+                        #value_ids.append([6,False,i])
+                        temp.append(i)
+            value_id = []
+            for x in product_values:
+                if attribute_values[x] not in temp:
+                    temp.append(attribute_values[x])
+                    #value_id = [6,False,[attribute_values[x]]]
+            value_id = [6,False,temp]
+            value_ids.append(value_id)
+            print(value_ids)
+            return value_ids
 
     def write(self,path):
         pass
@@ -110,30 +146,55 @@ class ProductProduct(Module):
         model = odoo.env[self._name]
         ids = model.search(criteria)
         return ids
-    
+    def search_for_duplicate(self,product,attributes,attribute_columns,odoo):
+        duplicate = -1
+        vals = []
+        val_ids = []
+        for column in attribute_columns:
+                vals.append(product[column])
+                val_ids.append(attributes[column]['values'][product[column]])
+        product_products = self.model.search([('product_tmpl_id','=',int(product['product_tmpl_id'])),('color_value','=',vals[0]),('variant_value','=',vals[1])])    
+        if len(product_products) > 0:
+            return product_products
+        # for x in product_products:
+        #     if vals[0] in x['attribute_value_ids'] and vals[1] in x['attribute_value_ids']:
+        #                 duplicate = x['id']
+        #     if duplicate > 0:
+        #             return [duplicate]
+        return val_ids
     def create(self,products,attributes,attribute_columns,odoo):
+        ids = []
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
+        self.model = odoo.env[self._name]
         product_list = []
         for product in products:
-            record = {}
-            record['name'] = product['NAME']
-            record['product_tmpl_id'] = product['product_tmpl_id']
-            record['attribute_value_ids'] = self.create_attribute_value_ids(product,attributes,attribute_columns)
-            product_list.append(record)
-        print(product_list)
-        self.model = odoo.env[self._name]
-        ids = self.model.create(product_list)
+            dup = self.search_for_duplicate(product,attributes,attribute_columns,odoo)
+            if len(dup) == 1:
+                ids.append(dup[0])
+            else:
+                record = {}
+                record['name'] = product['NAME']
+                record['product_tmpl_id'] = product['product_tmpl_id']
+                record['attribute_value_ids'] = [(6,'_',dup)]
+                idm = self.model.create(record)
+                ids.append(idm)
+                # record = {}
+                # record['name'] = product['NAME']
+                # record['product_tmpl_id'] = product['product_tmpl_id']
+                # record['attribute_value_ids'] = self.create_attribute_value_ids(product,attributes,attribute_columns)
+                # idm = self.model.create(record)
+                # ids.append(idm)
         return ids
 
     def create_attribute_value_ids(self,product,attributes,attribute_columns):
         
         value_ids = []
         for column in attribute_columns:
-            print(product[column])
+           # print(attributes[column]['values'],"-------------------------column")
             value_id = attributes[column]['values'][product[column]]
-            print(value_id)
             value_ids.append(value_id)
+        print(value_ids,"--------------------------------------------------column")
         return [(6,'_',value_ids)]
 
     # def create(self,values,odoo):

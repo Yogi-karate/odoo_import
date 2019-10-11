@@ -49,7 +49,15 @@ class ProductAttributes(Module):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         model = odoo.env[self._name]
-        self.ids = model.create(self._create_records(columns))
+        attribute_list = self._create_records(columns)
+        write_ids = []
+        for attribute in attribute_list:
+            att = model.search([('name','=',attribute['name'])])
+            if len(att) == 0:
+                att = model.create(attribute)
+                self.ids.append(att)
+            else:
+                self.ids.append(att[0])
         return values.create([{'name':columns[index],'id':self.ids[index],'values':attribute_values[columns[index]]} for index in range(len(columns))],odoo)
 
     def _create_records(self,columns):
@@ -107,9 +115,21 @@ class ProductAttributeValues(Module):
         model = odoo.env[self._name]
         res = {}
         for lines in range(len(values)):
+            ids = []
             attr_id = values[lines]['id']
             name = values[lines]['name']
             vals = values[lines]['values']
-            ids = model.create([{'attribute_id':attr_id,'name':vals[index]} for index in range(len(vals))])
+            print(name,vals)
+            count = 0
+            for val in vals:
+                mod = model.search([('attribute_id','=',attr_id),('name','=',val)])
+                if not mod:
+                    record = {}
+                    record['name'] = val
+                    record['attribute_id'] = attr_id
+                    ids.append(model.create(record))
+                else:
+                    ids.append(mod[0])
+            #ids = model.create([{'attribute_id':attr_id,'name':vals[index]} for index in range(len(vals))])
             res[name] = {'id':attr_id,'values':{vals[index]:ids[index] for index in range(len(ids))}}
         return res

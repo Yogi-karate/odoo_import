@@ -54,8 +54,16 @@ class Customer(Module):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
-        odoo.run(self._name,'create',customers)
-        return self.get_customer_list()
+        customers_list = []
+        for customer in customers:
+            cust = self.model.search([('name','=',customer.get('name')),('mobile','=',customer.get('mobile'))])
+            if not cust:
+                customers_list.append(self.model.create(customer))
+            else:
+                customers_list.append(cust[0])
+       # customers_list = odoo.run(self._name,'create',customers)
+        print(customers_list)
+        return customers_list
 
     def write(self,path):
         pass
