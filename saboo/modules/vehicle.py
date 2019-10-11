@@ -47,7 +47,13 @@ class Vehicle(Module):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
-        odoo.run(self._name,'create',vehicles)
+        for vehicle in vehicles:
+            veh = self.model.search([('name','=',vehicle.get('name'))])
+            if not veh:
+                self.model.create(vehicle)
+            else:
+                continue
+        #odoo.run(self._name,'create',vehicles)
 
 class Inventory(Module):
 
