@@ -49,8 +49,15 @@ class SaleOrder(Module):
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
         for so in sale_list:
-            so['order_line'] = self.create_order_line(so)
-        odoo.run(self._name,'create',sale_list)
+            so_dup = self.model.search([('name','=',so.get('name'))])
+            if not so_dup:
+                print("no duplicate")
+                so['order_line'] = self.create_order_line(so)
+                self.model.create(so)
+            else:
+                print("duplicate sale order")
+                continue
+        #odoo.run(self._name,'create',sale_list)
 
     def create_order_line(self,so):
         order_line = {'product_qty':1,'product_uom':1}
