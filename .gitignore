@@ -1,71 +1,57 @@
-odoorpc/tests/test_field_integer.py
-odoorpc/tests/test_field_float.py
-odoorpc/tests/test_field_datetime.py
-odoorpc/tests/test_field_date.py
-odoorpc/tests/test_field_char.py
-odoorpc/tests/test_field_boolean.py
-odoorpc/tests/test_field_binary.py
-odoorpc/tests/test_execute_kw.py
-odoorpc/tests/test_execute.py
-odoorpc/tests/test_error.py
-odoorpc/models.py
-odoorpc/fields.py
-odoorpc/error.py
-odoorpc/env.py
-odoorpc/db.py
-odoorpc/__pycache__/tools.cpython-37.pyc
-odoorpc/__pycache__/session.cpython-37.pyc
-odoorpc/__pycache__/report.cpython-37.pyc
-odoorpc/__pycache__/odoo.cpython-37.pyc
-odoorpc/__pycache__/models.cpython-37.pyc
-odoorpc/__pycache__/fields.cpython-37.pyc
-odoorpc/tests/test_session.py
-odoorpc/tests/test_report.py
-odoorpc/tests/test_model.py
-odoorpc/tests/test_login.py
-odoorpc/tests/test_init.py
-odoorpc/tests/test_field_text.py
-odoorpc/tests/test_field_selection.py
-odoorpc/tests/test_field_reference.py
-odoorpc/tests/test_field_one2many.py
-odoorpc/tests/test_field_many2one.py
-odoorpc/tests/test_field_many2many.py
-odoorpc/tests/test_db.py
-odoorpc/tests/__init__.py
-odoorpc/session.py
-odoorpc/rpc/jsonrpclib.py
-odoorpc/rpc/error.py
-odoorpc/rpc/__pycache__/jsonrpclib.cpython-37.pyc
-odoorpc/rpc/__pycache__/error.cpython-37.pyc
-odoorpc/rpc/__pycache__/__init__.cpython-37.pyc
-odoorpc/rpc/__init__.py
-odoorpc/report.py
-odoorpc/odoo.py
-odoorpc/tools.py
-odoorpc/tests/test_workflow.py
-odoorpc/tests/test_tools.py
-odoorpc/tests/test_timeout.py
-odoorpc/__pycache__/error.cpython-37.pyc
-odoorpc/__pycache__/env.cpython-37.pyc
-odoorpc/__pycache__/db.cpython-37.pyc
-odoorpc/__pycache__/__init__.cpython-37.pyc
-odoorpc/__init__.py
-odoorpc/tests/test_env.py
-saboo/modules/__pycache__/__init__.cpython-37.pyc
-saboo/config/__pycache__/__init__.cpython-37.pyc
-saboo/__pycache__/xls.cpython-37.pyc
-saboo/__pycache__/tools.cpython-37.pyc
-saboo/__pycache__/__init__.cpython-37.pyc
-saboo/modules/__pycache__/sale_order.cpython-37.pyc
-saboo/modules/__pycache__/purchase_order.cpython-37.pyc
-saboo/modules/__pycache__/product_attributes.cpython-37.pyc
-saboo/modules/__pycache__/product.cpython-37.pyc
-saboo/__pycache__/odoo.cpython-37.pyc
-saboo/modules/__pycache__/pricelist.cpython-37.pyc
-saboo/modules/__pycache__/module.cpython-37.pyc
-saboo/modules/__pycache__/field.cpython-37.pyc
-saboo/modules/__pycache__/customer.cpython-37.pyc
-saboo/modules/__pycache__/vehicle.cpython-37.pyc
-saboo/__pycache__/inventory_command.cpython-37.pyc
-saboo/__pycache__/command.cpython-37.pyc
-saboo/__pycache__/client.cpython-37.pyc
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# C extensions
+*.so
+# Dependency - Temporary
+odoorpc/
+# ipython files 
+*.ipynb
+# Distribution / packaging
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/

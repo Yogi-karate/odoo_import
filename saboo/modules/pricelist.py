@@ -136,7 +136,7 @@ class PricelistItem(Module):
             ids = odoo.env[model_name].search([('product_tmpl_id','=',model),('variant_value','=',variant),('color_value','=',color)])
             return ids
 
-    def create(self,items,pricelist_id,odoo):
+    def create(self,items,pricelist_id,component_columns,odoo):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         product_list = []

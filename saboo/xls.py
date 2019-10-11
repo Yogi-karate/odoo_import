@@ -495,7 +495,10 @@ class PricelistXLS(XLS):
         except Exception as ex:
             _logger.exception(ex)
             return pd.DataFrame()
-        
+    
+    def getPricelistColumns(self,sheet):
+        return [ " ".join(x.split()) for x in sheet.iloc[2,5:].values]
+
 
     def _validate(self,sheet):
         header_row = sheet.iloc[1,:].fillna("").astype(str)
@@ -524,11 +527,10 @@ class PricelistXLS(XLS):
             if self._validate(self.sb[sheet]):
                 model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
                 if not model.empty:
-                    pricelist_items.create(model.to_dict(orient='records'),pricelist_id,None)
+                    pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(sheet),None)
                 else:
                     _logger.error("Something Worong happened")
                     
-
     
     def getColors(self,sheet):
         colors = self.color_row.values[0][1]
