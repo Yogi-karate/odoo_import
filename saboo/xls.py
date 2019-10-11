@@ -466,9 +466,9 @@ class PricelistXLS(XLS):
         else:
             _logger.error("Invalid Configuration - Cannot execute")
             raise Exception("Cannot process excel file")    
-        # self.xlsx = pd.ExcelFile(self.path or saboo_path)
-        # self.original = pd.read_excel(self.xlsx,sheet_name=None)
-        # self.sb = self.original
+        self.xlsx = pd.ExcelFile(self.path or saboo_path)
+        self.original = pd.read_excel(self.xlsx,sheet_name=None)
+        self.sb = self.original
 
     def prepare(self,sheet):
         try:
@@ -497,7 +497,8 @@ class PricelistXLS(XLS):
             return pd.DataFrame()
     
     def getPricelistColumns(self,sheet):
-        return [ " ".join(x.split()) for x in sheet.iloc[2,5:].values]
+        model = sheet.iloc[:,1:]
+        return [ " ".join(x.split()) for x in model.iloc[2,5:].values]
 
 
     def _validate(self,sheet):
@@ -522,14 +523,16 @@ class PricelistXLS(XLS):
         pricelist_items = modules.PricelistItem(self.conf)
         pricelist_id = self.create_price_list()
         print("the pricelist created is ",pricelist_id)
+        count=1
         for sheet in self.sb:
             _logger.debug("The sheet is %s",sheet)
-            if self._validate(self.sb[sheet]):
+            if self._validate(self.sb[sheet]) and count == 1:
                 model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
                 if not model.empty:
-                    pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(sheet),None)
+                    pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(self.sb[sheet]),None)
                 else:
                     _logger.error("Something Worong happened")
+            count+=1
                     
     
     def getColors(self,sheet):
