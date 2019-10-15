@@ -41,6 +41,7 @@ class ProductAttributes(Module):
         self.conf = conf
 
     def create(self,attribute_values,odoo):
+        print("########################################################")
         conf = self.conf['attributes']
         if not conf['columns'] or not conf['fields']:
             raise Exception("Invalid Configuration - Cannot find Attributes to create")
@@ -53,6 +54,7 @@ class ProductAttributes(Module):
         write_ids = []
         for attribute in attribute_list:
             att = model.search([('name','=',attribute['name'])])
+            print(attribute['name'],"llllllllllllllllllllllllllllllllllllllllllllllllllll")
             if len(att) == 0:
                 att = model.create(attribute)
                 self.ids.append(att)
