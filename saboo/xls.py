@@ -260,6 +260,8 @@ class XLS(object):
 
     def create_products(self):
         prod_templates = []
+        print("UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU")
+        print(self.products)
         gp_prods = self._products.groupby([self._products['NAME'].str.upper()])
         for name,group in gp_prods:
             template = {'name':name,'values':[(x,group[x].drop_duplicates().values) for x in self.attribute_columns]}
@@ -277,6 +279,8 @@ class XLS(object):
     def update_product_id(self):
         prods = self.products
         sb = self.sb
+        print("*******************************************************",prods)
+        print("===============================================",self._products)
         product_product = modules.ProductProduct(self.conf)
         prods['Product ID'] = product_product.create(prods.to_dict(orient='records'),self.attribute_values,self.attribute_columns,None)
         gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_columns])
@@ -577,6 +581,19 @@ class PricelistXLS(XLS):
     def create_price_list(self):
         pricelist = modules.Pricelist(self.conf)
         return pricelist.create("Pricelist",1,None)
+    attribute_columns = ['COLOR','VARIANT']
+    attribute_values = None
+    def update_product_id(self,prods):
+        sb = self.sb
+        product_product = modules.ProductProduct(self.conf)
+        prods['Product ID'] = product_product.create(prods.to_dict(orient='records'),self.attribute_values,self.attribute_columns,None)
+        print(prods,"------------------------------------------")
+        #gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_columns])
+        # for name,group in gp_prods:
+        #     #_logger.debug(name)
+        #     #_logger.debug(group[self.product_attribute_columns])
+        #     self.sb.loc[group.index.values,'External NAME'] = prods.loc[group.index.values[:1],'Product ID'].values
+        #     _logger.debug(self.sb.loc[group.index.values,'External NAME'].values)
 
     def create_pricelist_items(self,sheet,pricelist_id):
         # remove the first unwanted column
@@ -585,10 +602,48 @@ class PricelistXLS(XLS):
             colors = self.getColors(model)
             print("The colors are ",colors)
             model = self.transform_variant_colors(model,colors)
+            model['Variant'] = model['Variant'] +'('+model['Color-Variant'] + ')'
+            model['Variant'] = [s.split(None, 1)[1] for s in model['Variant']]
+            colors = []
+            variants = []
+            for x in model['Color']:
+                colors.append(x)
+            for y in model['Variant']:
+                variants.append(y)
+            arr = {}
+            arr['COLOR'] = colors
+            arr['VARIANT'] = variants
+            print("----------------------------------------------------------")
+            print(arr)
+            attributes = modules.ProductAttributes(self.conf)
+            self.attribute_values = attributes.create(arr,None)
+            print(self.attribute_values,"----------------------------------------------------")
+            prod_templates = []
+            lis = {}
+            lis['name'] = model['Model'][0]
+            lis['values'] = [('COLOR',colors),('VARIANT',variants)]
+            prod_templates.append(lis)
+            print(prod_templates,"////////////////////////////////////////////////")
+            product = modules.ProductTemplate(self.conf)
+            template_ids = product.create(prod_templates,self.attribute_values,None)
+            print(template_ids,"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
+            news = model[['Model', 'Color', 'Variant']].copy()
+            print(news,"------------------------------------------------------news")
+            for index in range(len(template_ids)):
+                    prod_templates[index]['id'] = template_ids[index]
+            #self.products.loc[self.products['NAME'].str.lower() == prod_templates[index]['name'].lower(),'product_tmpl_id'] = str(template_ids[index])
+            self.product_templates = prod_templates
+            # update whole table with product_product id
+            self.update_product_id(news)
+            # product_product = modules.ProductProduct(self.conf)
+            # prods['Product ID'] = product_product.create(prods.to_dict(orient='records'),self.attribute_values,self.attribute_columns,None)
+       
             print("The price list is",pricelist_id)
             return model
         else:
             print("Error while preparing sheet")
             return pd.DataFrame()
+
+
 
 
