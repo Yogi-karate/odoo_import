@@ -515,28 +515,28 @@ class PricelistXLS(XLS):
             print("Invalid Sheet",len(sheet.columns))
             return False
         return False
-    def handle_request(self,file):
+    def handle_request(self,file,file_name,company_id):
         self.xlsx = pd.ExcelFile(file)
         self.original = pd.read_excel(self.xlsx,sheet_name=None)
         self.sb = self.original
-        self.execute()
+        self.execute(file_name,company_id)
         print(self.sb['EON'][1:4].to_dict(orient='records'))
         return self.sb['EON'][1:4].to_dict(orient='records')[0]
 
-    def execute(self):
+    def execute(self,file_name,company_id):
         pricelist_items = modules.PricelistItem(self.conf)
-        pricelist_id = self.create_price_list()
+        pricelist_id = self.create_price_list(file_name,company_id)
         print("the pricelist created is ",pricelist_id)
         count=1
         for sheet in self.sb:
             _logger.debug("The sheet is %s",sheet)
-            if self._validate(self.sb[sheet]) and count == 1:
+            if self._validate(self.sb[sheet]):
                 model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
                 if not model.empty:
                     pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(self.sb[sheet]),None)
                 else:
                     _logger.error("Something Worong happened")
-            count+=1
+            
                     
     
     def getColors(self,sheet):
@@ -578,9 +578,10 @@ class PricelistXLS(XLS):
                             c_model = c_model.append(row,ignore_index=True)
         return c_model
 
-    def create_price_list(self):
+    def create_price_list(self,file_name,company_id):
         pricelist = modules.Pricelist(self.conf)
-        return pricelist.create("Pricelist",1,None)
+        return pricelist.create(file_name,company_id,None)
+
     attribute_columns = ['COLOR','VARIANT']
     attribute_values = None
     def update_product_id(self,prods):
@@ -594,6 +595,8 @@ class PricelistXLS(XLS):
         #     #_logger.debug(group[self.product_attribute_columns])
         #     self.sb.loc[group.index.values,'External NAME'] = prods.loc[group.index.values[:1],'Product ID'].values
         #     _logger.debug(self.sb.loc[group.index.values,'External NAME'].values)
+
+
 
     def create_pricelist_items(self,sheet,pricelist_id):
         # remove the first unwanted column
