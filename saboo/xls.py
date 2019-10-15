@@ -527,7 +527,6 @@ class PricelistXLS(XLS):
         pricelist_items = modules.PricelistItem(self.conf)
         pricelist_id = self.create_price_list(file_name,company_id)
         print("the pricelist created is ",pricelist_id)
-        count=1
         for sheet in self.sb:
             _logger.debug("The sheet is %s",sheet)
             if self._validate(self.sb[sheet]):
@@ -589,6 +588,7 @@ class PricelistXLS(XLS):
         product_product = modules.ProductProduct(self.conf)
         prods['Product ID'] = product_product.create(prods.to_dict(orient='records'),self.attribute_values,self.attribute_columns,None)
         print(prods,"------------------------------------------")
+        return prods
 
 
     def create_pricelist_items(self,sheet,pricelist_id):
@@ -598,8 +598,16 @@ class PricelistXLS(XLS):
             colors = self.getColors(model)
             print("The colors are ",colors)
             model = self.transform_variant_colors(model,colors)
+            model = self.update_products(model)
+            return model
+        else:
+            print("Error while preparing sheet")
+            return pd.DataFrame()
+
+
+    def update_products(self, model):
             model['Variant'] = model['Variant'] +'('+model['Color-Variant'] + ')'
-            model['Variant'] = [s.split(None, 1)[1] for s in model['Variant']]
+            #model['Variant'] = [s.split(None, 1)[1] for s in model['Variant']]
             colors = []
             variants = []
             for x in model['Color']:
@@ -609,20 +617,20 @@ class PricelistXLS(XLS):
             arr = {}
             arr['COLOR'] = colors
             arr['VARIANT'] = variants
-            print("----------------------------------------------------------")
-            print(arr)
+           # print("----------------------------------------------------------")
+          #  print(arr)
             attributes = modules.ProductAttributes(self.conf)
             self.attribute_values = attributes.create(arr,None)
-            print(self.attribute_values,"----------------------------------------------------")
+           # print(self.attribute_values,"----------------------------------------------------")
             prod_templates = []
             lis = {}
             lis['name'] = model['Model'][0]
             lis['values'] = [('COLOR',colors),('VARIANT',variants)]
             prod_templates.append(lis)
-            print(prod_templates,"////////////////////////////////////////////////")
+         #   print(prod_templates,"////////////////////////////////////////////////")
             product = modules.ProductTemplate(self.conf)
             template_ids = product.create(prod_templates,self.attribute_values,None)
-            print(template_ids,"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
+      #      print(template_ids,"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
             prods = model[['Model', 'Color', 'Variant']].copy()
             mapping = {prods.columns[0]:'NAME', prods.columns[1]: 'COLOR', prods.columns[2]:'VARIANT'}
             prods = prods.rename(columns=mapping)
@@ -631,13 +639,12 @@ class PricelistXLS(XLS):
                     prod_templates[index]['id'] = template_ids[index]
             self.product_templates = prod_templates
             # update whole table with product_product id
-            self.update_product_id(prods)
-            print("The price list is",pricelist_id)
-            return model
-        else:
-            print("Error while preparing sheet")
-            return pd.DataFrame()
-
-
+            print("Length",len(prods), len(model['Variant']),"--------------------",model['Model'])
+            prods = self.update_product_id(prods)
+            print("Length",len(prods), len(model['Variant']))
+            for x in model['Variant']:
+                model['product_id'] = 2011
+            #model['product_id'] = prods
+            return model   
 
 

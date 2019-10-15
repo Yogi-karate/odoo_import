@@ -132,14 +132,15 @@ class PricelistItem(Module):
             return ids
 
     def create(self,items,pricelist_id,component_columns,odoo):
+        print("items",items)
         components = PriceListComponentType(self.conf).getComponents()# to fetch update data from table
         components_names = [x['name'] for x in self.components]
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         #product_list = []
        
-        print('The pricelist to be added to is',pricelist_id,len(items))
-        print('component_columns',component_columns)
+      #  print('The pricelist to be added to is',pricelist_id,len(items))
+      #  print('component_columns',component_columns)
         
         self.model = odoo.env[self._name]
 
@@ -156,13 +157,13 @@ class PricelistItem(Module):
             # product_id =  self.findProduct(pricelist['Model'], str(pricelist['Variant'])+str(pricelist['Variant-1']), pricelist['Color'])
             # pricelist.update({"product_id":product_id})
             fields = self._field_list
-            fields.update({"fixed_price":str(pricelist['Ex S/R Price']), "pricelist_id":pricelist_id})
+            fields.update({"fixed_price":str(pricelist['Ex S/R Price']), "pricelist_id":pricelist_id, "product_id" : pricelist['product_id']})
             price_list_item_id = self.model.create(fields)
-            print("pricelist id",price_list_item_id)
+      #      print("pricelist id",price_list_item_id)
 
             for component_value in component_columns:
-                print("component_value", pricelist[component_value])
-                print("component_value a", [x['id'] for x in components if x['name'] == component_value])
+         #       print("component_value", pricelist[component_value])
+          #      print("component_value a", [x['id'] for x in components if x['name'] == component_value])
                 PricelistComponent(self.conf).create({'item_id':price_list_item_id,
                     'type_id':[x['id'] for x in components if x['name'] == component_value][0],
                     'price':pricelist[component_value]},None)

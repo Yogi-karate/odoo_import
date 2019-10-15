@@ -39,8 +39,9 @@ def upload_file():
             saboo.client._init_odoo(app.config['odoo_conf'])
             xls = saboo.PricelistXLS(app.config['odoo_conf'])
             return jsonify(xls.handle_request(request.files.get('file'), body['name'], body['company']))
-        except:
-            return jsonify({"error":"An exception occurred"})
+        except Exception as ex:
+            print(str(ex))
+            return jsonify({"error":"ex"})
        
     else:
         flash('Allowed file types are xls,xlsx,csv')
