@@ -589,13 +589,6 @@ class PricelistXLS(XLS):
         product_product = modules.ProductProduct(self.conf)
         prods['Product ID'] = product_product.create(prods.to_dict(orient='records'),self.attribute_values,self.attribute_columns,None)
         print(prods,"------------------------------------------")
-        #gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_columns])
-        # for name,group in gp_prods:
-        #     #_logger.debug(name)
-        #     #_logger.debug(group[self.product_attribute_columns])
-        #     self.sb.loc[group.index.values,'External NAME'] = prods.loc[group.index.values[:1],'Product ID'].values
-        #     _logger.debug(self.sb.loc[group.index.values,'External NAME'].values)
-
 
 
     def create_pricelist_items(self,sheet,pricelist_id):
@@ -630,17 +623,15 @@ class PricelistXLS(XLS):
             product = modules.ProductTemplate(self.conf)
             template_ids = product.create(prod_templates,self.attribute_values,None)
             print(template_ids,"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
-            news = model[['Model', 'Color', 'Variant']].copy()
-            print(news,"------------------------------------------------------news")
+            prods = model[['Model', 'Color', 'Variant']].copy()
+            mapping = {prods.columns[0]:'NAME', prods.columns[1]: 'COLOR', prods.columns[2]:'VARIANT'}
+            prods = prods.rename(columns=mapping)
+            prods.insert(3, "product_tmpl_id", template_ids[0])
             for index in range(len(template_ids)):
                     prod_templates[index]['id'] = template_ids[index]
-            #self.products.loc[self.products['NAME'].str.lower() == prod_templates[index]['name'].lower(),'product_tmpl_id'] = str(template_ids[index])
             self.product_templates = prod_templates
             # update whole table with product_product id
-            self.update_product_id(news)
-            # product_product = modules.ProductProduct(self.conf)
-            # prods['Product ID'] = product_product.create(prods.to_dict(orient='records'),self.attribute_values,self.attribute_columns,None)
-       
+            self.update_product_id(prods)
             print("The price list is",pricelist_id)
             return model
         else:
