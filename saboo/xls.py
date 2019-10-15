@@ -511,17 +511,17 @@ class PricelistXLS(XLS):
             print("Invalid Sheet",len(sheet.columns))
             return False
         return False
-    def handle_request(self,file):
+    def handle_request(self,file,file_name,company_id):
         self.xlsx = pd.ExcelFile(file)
         self.original = pd.read_excel(self.xlsx,sheet_name=None)
         self.sb = self.original
-        self.execute()
+        self.execute(file_name,company_id)
         print(self.sb['EON'][1:4].to_dict(orient='records'))
         return self.sb['EON'][1:4].to_dict(orient='records')[0]
 
-    def execute(self):
+    def execute(self,file_name,company_id):
         pricelist_items = modules.PricelistItem(self.conf)
-        pricelist_id = self.create_price_list()
+        pricelist_id = self.create_price_list(file_name,company_id)
         print("the pricelist created is ",pricelist_id)
         count=1
         for sheet in self.sb:
@@ -574,9 +574,9 @@ class PricelistXLS(XLS):
                             c_model = c_model.append(row,ignore_index=True)
         return c_model
 
-    def create_price_list(self):
+    def create_price_list(self,file_name,company_id):
         pricelist = modules.Pricelist(self.conf)
-        return pricelist.create("Pricelist",1,None)
+        return pricelist.create(file_name,company_id,None)
 
     def create_pricelist_items(self,sheet,pricelist_id):
         # remove the first unwanted column
