@@ -7,9 +7,12 @@ from werkzeug.utils import secure_filename
 import saboo
 import saboo.tools as tools
 from flask_cors import CORS
+import logging
 
 ALLOWED_EXTENSIONS = set(['xls', 'csv', 'xlsx'])
 cors = CORS(app)
+_logger = logging.getLogger(__name__)
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -22,11 +25,13 @@ def upload_form():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    print("appcon",app.config['odoo_conf'])
+    print(app.config['odoo_conf'])
+    print(request.files)
+    print(dict(request.headers))
     if request.method == 'POST':
         if 'file' not in request.files:
             flash('No file part')
-            return jsonify({"error":"No file part"})
+            return jsonify({'status':'error','message':'no files in request'})
     file = request.files['file']
     if file.filename == '':
         flash('No file selected for uploading')
@@ -38,14 +43,16 @@ def upload_file():
             filename = secure_filename(file.filename)
             saboo.client._init_odoo(app.config['odoo_conf'])
             xls = saboo.PricelistXLS(app.config['odoo_conf'])
-            return jsonify(xls.handle_request(request.files.get('file'), body['name'], body['company']))
+            if body and 'name' in body:
+                return jsonify(xls.handle_request(request.files.get('file'), body['name']))
+            else:
+                return jsonify(xls.handle_request(request.files.get('file')))
         except Exception as ex:
-            print(str(ex))
+            _logger.exception(ex)
             return jsonify({"error":"ex"})
-       
     else:
         flash('Allowed file types are xls,xlsx,csv')
-        return redirect(request.url)
+        return jsonify({'status':'error','message':'invalid request'})
         
 @app.route('/getlead', methods=['GET'])
 def getCrmLead():

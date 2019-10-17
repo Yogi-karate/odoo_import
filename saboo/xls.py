@@ -481,26 +481,23 @@ class PricelistXLS(XLS):
             pricelist_columns = [ " ".join(x.split()) for x in model.iloc[2,5:].values]
             model = model[4:]
             model = model.reset_index(drop=True)
-            pricelist_columns.insert(0,'Model')
-            pricelist_columns.insert(1,'Variant')
-            pricelist_columns.insert(2,'Color-Variant')
-            pricelist_columns.insert(3,'Variant-1')
-            pricelist_columns.insert(4,'Ex S/R Price')
+            pricelist_columns = ['Model','Variant','Color-Variant','Variant-1','Ex S/R Price']+pricelist_columns
             model.columns = pricelist_columns
             print(model[model['Model'].str.upper().str.contains('COLOUR')==True].index.values[0])
             self.color_row = model[model['Model'].str.upper().str.contains('COLOUR')==True]
             print(self.color_row)
             model = model[:self.color_row.index.values[0]-2]
             model.drop(model[model.isna().all(axis=1)==True].index.values)
-            model.loc[:,'Model'] = pd.Series(model['Model'].fillna(method='ffill'))
-            model.loc[:,'Variant'] = pd.Series(model['Variant'].fillna(method='ffill'))
-            model.loc[:,'Variant-1'] = pd.Series(model['Variant-1'].fillna(method='ffill'))
+            model.iloc[:,:3] = model.iloc[:,:3].fillna(method='ffill').astype('str')
+            model.iloc[:,4:] = model.iloc[:,4:].fillna(0).astype('int')
+            model.loc[:,'Variant-1'] = model.loc[:,'Variant-1'].fillna('').astype('str')
             return model
         except Exception as ex:
             _logger.exception(ex)
             return pd.DataFrame()
     
     def getPricelistColumns(self,sheet):
+        # remove the first unwanted column
         model = sheet.iloc[:,1:]
         return [ " ".join(x.split()) for x in model.iloc[2,5:].values]
 
@@ -515,7 +512,8 @@ class PricelistXLS(XLS):
             print("Invalid Sheet",len(sheet.columns))
             return False
         return False
-    def handle_request(self,file,file_name,company_id):
+
+    def handle_request(self,file,file_name = 'h1',company_id = 1):
         self.xlsx = pd.ExcelFile(file)
         self.original = pd.read_excel(self.xlsx,sheet_name=None)
         self.sb = self.original
@@ -523,21 +521,19 @@ class PricelistXLS(XLS):
         print(self.sb['EON'][1:4].to_dict(orient='records'))
         return self.sb['EON'][1:4].to_dict(orient='records')[0]
 
-    def execute(self,file_name,company_id):
+    def execute(self,file_name = 'h1',company_id = 1):
         pricelist_items = modules.PricelistItem(self.conf)
         pricelist_id = self.create_price_list(file_name,company_id)
         print("the pricelist created is ",pricelist_id)
         for sheet in self.sb:
             _logger.debug("The sheet is %s",sheet)
-            if self._validate(self.sb[sheet]):
+            if self._validate(self.sb[sheet]) and sheet == 'EON':
                 model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
                 if not model.empty:
                     pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(self.sb[sheet]),None)
                 else:
-                    _logger.error("Something Worong happened")
-            
+                    _logger.error("Something Wrong happened")
                     
-    
     def getColors(self,sheet):
         colors = self.color_row.values[0][1]
         if colors:    
@@ -581,18 +577,16 @@ class PricelistXLS(XLS):
         pricelist = modules.Pricelist(self.conf)
         return pricelist.create(file_name,company_id,None)
 
-    attribute_columns = ['COLOR','VARIANT']
-    attribute_values = None
-    def update_product_id(self,prods):
+    def update_product_id(self,prods,attribute_values):
         sb = self.sb
+        attribute_columns = ['COLOR','VARIANT']
         product_product = modules.ProductProduct(self.conf)
-        prods['Product ID'] = product_product.create(prods.to_dict(orient='records'),self.attribute_values,self.attribute_columns,None)
+        prods['Product ID'] = product_product.create(prods.to_dict(orient='records'),attribute_values,attribute_columns,None)
         print(prods,"------------------------------------------")
         return prods
 
 
     def create_pricelist_items(self,sheet,pricelist_id):
-        # remove the first unwanted column
         model = self.prepare(sheet)
         if not model.empty:
             colors = self.getColors(model)
@@ -608,43 +602,30 @@ class PricelistXLS(XLS):
     def update_products(self, model):
             model['Variant'] = model['Variant'] +'('+model['Color-Variant'] + ')'
             #model['Variant'] = [s.split(None, 1)[1] for s in model['Variant']]
-            colors = []
-            variants = []
-            for x in model['Color']:
-                colors.append(x)
-            for y in model['Variant']:
-                variants.append(y)
             arr = {}
+            colors = model['Color'].values
+            variants = model['Variant'].values
             arr['COLOR'] = colors
             arr['VARIANT'] = variants
-           # print("----------------------------------------------------------")
-          #  print(arr)
             attributes = modules.ProductAttributes(self.conf)
-            self.attribute_values = attributes.create(arr,None)
-           # print(self.attribute_values,"----------------------------------------------------")
+            attribute_values = attributes.create(arr,None)
             prod_templates = []
             lis = {}
             lis['name'] = model['Model'][0]
             lis['values'] = [('COLOR',colors),('VARIANT',variants)]
             prod_templates.append(lis)
-         #   print(prod_templates,"////////////////////////////////////////////////")
             product = modules.ProductTemplate(self.conf)
-            template_ids = product.create(prod_templates,self.attribute_values,None)
-      #      print(template_ids,"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
+            template_ids = product.create(prod_templates,attribute_values,None)
             prods = model[['Model', 'Color', 'Variant']].copy()
-            mapping = {prods.columns[0]:'NAME', prods.columns[1]: 'COLOR', prods.columns[2]:'VARIANT'}
-            prods = prods.rename(columns=mapping)
-            prods.insert(3, "product_tmpl_id", template_ids[0])
-            for index in range(len(template_ids)):
-                    prod_templates[index]['id'] = template_ids[index]
-            self.product_templates = prod_templates
+            prods.columns = ['NAME','COLOR','VARIANT']
+            prods.loc[:,'product_tmpl_id'] = template_ids[0]
+
             # update whole table with product_product id
             print("Length",len(prods), len(model['Variant']),"--------------------",model['Model'])
-            prods = self.update_product_id(prods)
-            print("Length",len(prods), len(model['Variant']))
-            for x in model['Variant']:
-                model['product_id'] = 2011
-            #model['product_id'] = prods
+            prods = self.update_product_id(prods,attribute_values)
+            print("Length------",len(prods), len(model['Variant']))
+            model.loc[:,'product_id'] = prods['Product ID']
+            print('Model is ',model)
             return model   
 
 
