@@ -35,7 +35,6 @@ _logger = logging.getLogger(__name__)
 
 class Pricelist(Module):
 
-
     _name = 'product.pricelist'
     _field_list = {'name','type','create_variant'}
     ids = []
@@ -103,22 +102,13 @@ class PricelistComponent(Module):
 
 class PricelistItem(Module):
 
- 
     _component = 'dms_price_component'
     _component_field_list = {"name":"", "description":""}
     _name = 'product.pricelist.item'
     _field_list = {"applied_on":"0_product_variant","min_quantity":0,"compute_price":"fixed",
     "base":"list_price","price_discount":0,"pricelist_id":66,"product_id":2011,
     "date_start":"2019-10-07","date_end":"2019-10-10","fixed_price":2500000,"percent_price":0}
-    # sample = {'Model': 'CRETA', 'Variant': 'VTVT SX', 'Color-Variant': nan, 'Variant-1': '1.6 VTVT', 'Ex S/R Price': 1226078, 
-    # 'Life Tax': 175420, 'TCS': 12260.78, 'Hyundai Assurance': 72939.33372712, 'Handling charges': 3000, 
-    # 'ON-ROAD Price': 1489698.11372712, 'P.REG. CHARGES (Optional)': 3150, 'NIL DEP INSURANCE': 81873.15107412, 
-    # 'Basic kit': 1564, 'Extended Warranty ': 8449, 'Addnl for  Nill Dep. Insurance': 8933.817347000004, 
-    # 'Color': 'Marine Blue (S8U).Typhone Silver (T2X)'}
-
-    # ['Model', 'Variant', 'Color-Variant', 'Variant-1', 'Ex S/R Price', 'Life Tax', 'Hyundai Assurance',
-    #  'Handling charges', 'ON-ROAD Price', 'P.REG. CHARGES (Optional)', 
-    #  'NIL DEP INSURANCE', 'Basic kit', 'Extended Warranty', 'Addnal for Nill Dep. Insurance']
+ 
     def __init__(self,conf):
         self.conf = conf
         self.components = PriceListComponentType(self.conf).getComponents()
@@ -132,42 +122,41 @@ class PricelistItem(Module):
             return ids
 
     def create(self,items,pricelist_id,component_columns,odoo):
-        print("items",items)
+        #print("items",items)
         components = PriceListComponentType(self.conf).getComponents()# to fetch update data from table
         components_names = [x['name'] for x in self.components]
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
-        #product_list = []
-       
-      #  print('The pricelist to be added to is',pricelist_id,len(items))
-      #  print('component_columns',component_columns)
-        
         self.model = odoo.env[self._name]
-
         for comp in component_columns:
             if not comp in components_names:
                 print("comp",comp)
                 component_fields = self._component_field_list
                 component_fields.update({"name":comp,"description":comp })
                 PriceListComponentType(self.conf).create(component_fields,None)
-        
         components = PriceListComponentType(self.conf).getComponents()
-        
+        price_lists = []        
         for pricelist in items:
-            # product_id =  self.findProduct(pricelist['Model'], str(pricelist['Variant'])+str(pricelist['Variant-1']), pricelist['Color'])
-            # pricelist.update({"product_id":product_id})
-            fields = self._field_list
+            pricelist_items = {}
+            fields = self._field_list.copy()
             fields.update({"fixed_price":str(pricelist['Ex S/R Price']), "pricelist_id":pricelist_id, "product_id" : pricelist['product_id']})
-            price_list_item_id = self.model.create(fields)
-      #      print("pricelist id",price_list_item_id)
+            pricelist_items.update({'item':fields})
+            item_components = [ {'item_id':'','type_id':[x['id'] for x in components if x['name'] == comp][0],
+                    'price':pricelist[comp]} for comp in component_columns]
+            _logger.debug("the components %s",item_components)
+            pricelist_items.update({'components':item_components})
+            price_lists.append(pricelist_items)
+        price_list_item_ids = self.model.create([ x['item'] for x in price_lists])
+        for index in range(len(price_lists)):
+            components = price_lists[index]['components']
+            for component in components:
+                component.update({'item_id':price_list_item_ids[index]})
+            price_lists[index].update({'item_id':price_list_item_ids[index]})
+        final_comps = []
+        for pricelist in price_lists:
+            final_comps = final_comps + pricelist['components']
+        component_ids = PricelistComponent(self.conf).create(final_comps,None)
+        return price_lists
 
-            for component_value in component_columns:
-         #       print("component_value", pricelist[component_value])
-          #      print("component_value a", [x['id'] for x in components if x['name'] == component_value])
-                PricelistComponent(self.conf).create({'item_id':price_list_item_id,
-                    'type_id':[x['id'] for x in components if x['name'] == component_value][0],
-                    'price':pricelist[component_value]},None)
-
-            #return ids
             
            

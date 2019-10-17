@@ -42,6 +42,7 @@ def upload_file():
             body = request.form
             filename = secure_filename(file.filename)
             saboo.client._init_odoo(app.config['odoo_conf'])
+            saboo.client._init_logging(app.config['odoo_conf']['Logging'])
             xls = saboo.PricelistXLS(app.config['odoo_conf'])
             if body and 'name' in body:
                 return jsonify(xls.handle_request(request.files.get('file'), body['name']))

@@ -478,7 +478,7 @@ class PricelistXLS(XLS):
         try:
             model = sheet.iloc[:,1:]
             print(model.iloc[2,5:].values)
-            pricelist_columns = [ " ".join(x.split()) for x in model.iloc[2,5:].values]
+            pricelist_columns = [ " ".join(str(x).split()) for x in model.iloc[2,5:].values]
             model = model[4:]
             model = model.reset_index(drop=True)
             pricelist_columns = ['Model','Variant','Color-Variant','Variant-1','Ex S/R Price']+pricelist_columns
@@ -517,23 +517,34 @@ class PricelistXLS(XLS):
         self.xlsx = pd.ExcelFile(file)
         self.original = pd.read_excel(self.xlsx,sheet_name=None)
         self.sb = self.original
-        self.execute(file_name,company_id)
-        print(self.sb['EON'][1:4].to_dict(orient='records'))
-        return self.sb['EON'][1:4].to_dict(orient='records')[0]
+        return self.execute(file_name,company_id)
 
     def execute(self,file_name = 'h1',company_id = 1):
         pricelist_items = modules.PricelistItem(self.conf)
         pricelist_id = self.create_price_list(file_name,company_id)
         print("the pricelist created is ",pricelist_id)
+        result = {}
+        _logger.debug("The pricelist file with sheets %s read and number of sheets is  %s ",self.sb.keys(), str(len(self.sb.keys())))
         for sheet in self.sb:
-            _logger.debug("The sheet is %s",sheet)
-            if self._validate(self.sb[sheet]) and sheet == 'EON':
-                model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
-                if not model.empty:
-                    pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(self.sb[sheet]),None)
+            try:
+                _logger.debug("Started Processing sheet  %s -----------",sheet)
+                if self._validate(self.sb[sheet]):
+                    model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
+                    if not model.empty:
+                        result[sheet] = pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(self.sb[sheet]),None)
+                    else:
+                        _logger.error("Could not Prepare sheet")
+                        result[sheet] = 'Sheet has problems'
                 else:
-                    _logger.error("Something Wrong happened")
-                    
+                    _logger.error("Validation Failed !!!!!")
+                    result[sheet] = 'Not a Valid Format'
+            except Exception as ex:
+                _logger.exception(ex)
+                result[sheet] = 'error' 
+            _logger.debug("Finished Processing sheet  %s -----------",sheet)
+        return result
+        
+        
     def getColors(self,sheet):
         colors = self.color_row.values[0][1]
         if colors:    
@@ -554,7 +565,7 @@ class PricelistXLS(XLS):
         c_model = pd.DataFrame()
         print(colors)
         for index in model.index.values:
-            row = model.loc[index:index,:]
+            row = model.loc[index:index,:].copy()
             if  'Colors' in colors and row['Color-Variant'].isna().values[0]:
                 for color in colors['Colors']:
                     if color:
@@ -625,7 +636,6 @@ class PricelistXLS(XLS):
             prods = self.update_product_id(prods,attribute_values)
             print("Length------",len(prods), len(model['Variant']))
             model.loc[:,'product_id'] = prods['Product ID']
-            print('Model is ',model)
             return model   
 
 
