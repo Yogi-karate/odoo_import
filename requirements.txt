@@ -1,4 +1,6 @@
 zappa==0.48.2
-flask==1.2
+flask==1.0.2
 pandas==0.25.1
-xlrd
+xlrd==1.2.0
+odoorpc==0.7.0
+flask_cors==3.0.8
