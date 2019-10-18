@@ -5,8 +5,6 @@
         "aws_region":"ap-south-1"
         "environment_variables":{
         	"FILEUP_CONFIG":"dev"
-        }
-        
-          
+        }         
     }
 }

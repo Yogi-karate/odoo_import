@@ -52,13 +52,13 @@ class Pricelist(Module):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         id_exists = odoo.env[self._name].search([('name','=',name)],limit=1)
-        if not id_exists:
-            self.model = odoo.env[self._name]
-            ids = self.model.create(pricelist)
-            return ids
-        else:
+        if id_exists:
             _logger.info(" %s Pricelist Already Exists %s",name,id_exists)
-            return id_exists[0]
+            old_pricelist = odoo.env[self._name].browse(id_exists)
+            old_pricelist.unlink()
+        self.model = odoo.env[self._name]
+        ids = self.model.create(pricelist)
+        return ids
 
     def write(self,path):
         pass
