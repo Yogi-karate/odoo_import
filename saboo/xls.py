@@ -630,10 +630,16 @@ class PricelistXLS(XLS):
     def update_products(self, model):
             print(model)
             model['Variant'] = model['Variant'] +'('+model['Color-Variant'] + ')'
-            #model['Variant'] = [s.split(None, 1)[1] for s in model['Variant']]
             arr = {}
             colors = model['Color'].values
             variants = model['Variant'].values
+            col_vars = model['Color-Variant'].values
+            var1_vars = model['Variant-1'].values
+            for index in range(len(variants)):
+                if col_vars[index]:
+                    variants[index] = variants[index] + '('+col_vars[index]+')'
+                if var1_vars[index]:
+                    variants[index] = variants[index] + '('+var1_vars[index]+')'
             arr['COLOR'] = colors
             arr['VARIANT'] = variants
             attributes = modules.ProductAttributes(self.conf)
