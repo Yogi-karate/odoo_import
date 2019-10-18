@@ -10,7 +10,7 @@ script:
 - echo "Hello before Zappa"
 
 after_success:
-- test $TRAVIS_BRANCH="master" && zappa update dev
+- zappa update dev
 
 notifications:
   slack: saboogroupworkspace:tco87KFtlVfRyVKhQoaEfKQn#smartdms-dev
