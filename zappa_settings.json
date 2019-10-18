@@ -1,8 +1,11 @@
 {
     "dev": {
         "s3_bucket": "fupload.zappa",
-        "app_function": "fileupload.app",
+        "app_function": "file_upload.app",
         "aws_region":"ap-south-1"
+        "environment_variables":{
+        	"FILEUP_CONFIG":"dev"
+        }
         
           
     }

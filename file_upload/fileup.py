@@ -39,6 +39,7 @@ def upload_file():
     if file and allowed_file(file.filename):
         try:
             print("sample---------",request.form)
+            print("the ODOO host to use is ",app.config['odoo_conf']['odoo']['server_name'])
             body = request.form
             filename = secure_filename(file.filename)
             saboo.client._init_odoo(app.config['odoo_conf'])
