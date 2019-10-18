@@ -102,8 +102,8 @@ def _init_logging(conf):
     default_format = logging.Formatter('%(asctime)s  %(name)s  %(levelname)s  %(message)s')
     if conf['level']:
         _logger.setLevel(conf['level'])
-
-    if conf['handler'] in conf and conf['handler']['logfile']:
+    print("value of handler is ",conf.get('handler'),conf.get('level'))
+    if conf.get('handler') and conf.get('logfile'):
         handler = logging.FileHandler(conf['logfile'])
         handler.setFormatter(default_format)
         _logger.addHandler(handler) 
