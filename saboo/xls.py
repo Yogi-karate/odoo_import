@@ -533,25 +533,30 @@ class PricelistXLS(XLS):
         pricelist_items = modules.PricelistItem(self.conf)
         pricelist_id = self.create_price_list(file_name,company_id)
         print("the pricelist created is ",pricelist_id)
-        result = {}
+        result = []
         _logger.debug("The pricelist file with sheets %s read and number of sheets is  %s ",self.sb.keys(), str(len(self.sb.keys())))
         for sheet in self.sb:
+            sheet_result = {'name':sheet,'status':'','values':''}
             try:
                 _logger.debug("Started Processing sheet  %s -----------",sheet)
                 if self._validate(self.sb[sheet]) and sheet == 'ACTIVE I20':
                     model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
                     if not model.empty:
-                        result[sheet] = pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(self.sb[sheet]),None)
+                        sheet_result['values'] = pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(self.sb[sheet]),None)
                     else:
                         _logger.error("Could not Prepare sheet")
-                        result[sheet] = 'Sheet has problems'
+                        sheet_result['status'] = 'incorrect sheet'
+                        sheet_result['values'] = 'Sheet has problems'
                 else:
                     _logger.error("Validation Failed !!!!!")
-                    result[sheet] = 'Not a Valid Format'
+                    sheet_result['status'] = 'validation failed'
+                    sheet_result['values'] ='Not a Valid Format'
             except Exception as ex:
                 _logger.exception(ex)
-                result[sheet] = 'error' 
+                sheet_result['status'] = 'error'
+                sheet_result['values'] = str(ex) 
             _logger.debug("Finished Processing sheet  %s -----------",sheet)
+            result.append(sheet_result)
         return result
         
         
