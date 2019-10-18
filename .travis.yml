@@ -4,6 +4,6 @@ python:
 install:
 - pip install -r requirements.txt
 after_success:
-- test $TRAVIS_BRANCH = “master” && zappa update
+- zappa update dev
 notifications:
   slack: saboogroupworkspace:tco87KFtlVfRyVKhQoaEfKQn#smartdms
