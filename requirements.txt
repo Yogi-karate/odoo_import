@@ -1,0 +1,4 @@
+zappa==0.48.2
+flask==1.2
+pandas==0.25.1
+xlrd

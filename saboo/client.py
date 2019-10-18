@@ -102,13 +102,13 @@ def _init_logging(conf):
     default_format = logging.Formatter('%(asctime)s  %(name)s  %(levelname)s  %(message)s')
     if conf['level']:
         _logger.setLevel(conf['level'])
-    if conf['handler'] and (conf['handler'] in ['file']):
-        print("Hello")
+
+    if 'handler' in conf and conf['handller']['logfile']:
         handler = logging.FileHandler(conf['logfile'])
+        handler.setFormatter(default_format)
+        _logger.addHandler(handler) 
     std_handler = logging.StreamHandler()
-    handler.setFormatter(default_format)
     std_handler.setFormatter(default_format)
-    _logger.addHandler(handler) 
     _logger.addHandler(std_handler)    
     _logger.info("Say something")
 

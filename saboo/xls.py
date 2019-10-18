@@ -469,10 +469,13 @@ class PricelistXLS(XLS):
             self.sheet = conf['xls']['sheet_name']
         else:
             _logger.error("Invalid Configuration - Cannot execute")
-            raise Exception("Cannot process excel file")    
-        self.xlsx = pd.ExcelFile(self.path or saboo_path)
-        self.original = pd.read_excel(self.xlsx,sheet_name=None)
-        self.sb = self.original
+            raise Exception("Cannot process excel file")
+        if conf['xls'] and conf['xls']['mode'] == 'auto':
+            self.xlsx = pd.ExcelFile(self.path or saboo_path)
+            self.original = pd.read_excel(self.xlsx,sheet_name=None)
+            self.sb = self.original
+        else:
+            _logger.info("-----XLS not loaded in init------")
 
     def prepare(self,sheet):
         try:
@@ -486,9 +489,16 @@ class PricelistXLS(XLS):
             print(model[model['Model'].str.upper().str.contains('COLOUR')==True].index.values[0])
             self.color_row = model[model['Model'].str.upper().str.contains('COLOUR')==True]
             print(self.color_row)
-            model = model[:self.color_row.index.values[0]-2]
+            model = model[:self.color_row.index.values[0]-1]
             model.drop(model[model.isna().all(axis=1)==True].index.values)
-            model.iloc[:,:3] = model.iloc[:,:3].fillna(method='ffill').astype('str')
+            if model['Color-Variant'].isna().all():
+                model.loc[:,['Color-Variant']] = model.loc[:,['Color-Variant']].fillna('').astype('str')
+            else:
+                model.loc[:,['Color-Variant']] = model.loc[:,['Color-Variant']].fillna(method='ffill').astype('str')
+            if model['Variant-1'].isna().all():
+                model.loc[:,['Variant-1']] = model.loc[:,['Variant-1']].fillna('').astype('str')
+            else:
+                model.loc[:,['Variant-1']] = model.loc[:,['Variant-1']].fillna(method='ffill').astype('str')
             model.iloc[:,4:] = model.iloc[:,4:].fillna(0).astype('int')
             model.loc[:,'Variant-1'] = model.loc[:,'Variant-1'].fillna('').astype('str')
             return model
@@ -528,7 +538,7 @@ class PricelistXLS(XLS):
         for sheet in self.sb:
             try:
                 _logger.debug("Started Processing sheet  %s -----------",sheet)
-                if self._validate(self.sb[sheet]):
+                if self._validate(self.sb[sheet]) and sheet == 'ACTIVE I20':
                     model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
                     if not model.empty:
                         result[sheet] = pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(self.sb[sheet]),None)
