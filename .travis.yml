@@ -6,6 +6,6 @@ install:
 script:
 - echo "Hello before Zappa"
 after_success:
-- zappa deploy dev
+- zappa update dev
 notifications:
   slack: saboogroupworkspace:tco87KFtlVfRyVKhQoaEfKQn#smartdms-dev
