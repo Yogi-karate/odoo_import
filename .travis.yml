@@ -8,4 +8,4 @@ script:
 after_success:
 - zappa deploy dev
 notifications:
-  slack: saboogroupworkspace:tco87KFtlVfRyVKhQoaEfKQn#smartdms
+  slack: saboogroupworkspace:tco87KFtlVfRyVKhQoaEfKQn#smartdms-dev
