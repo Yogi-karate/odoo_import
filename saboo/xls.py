@@ -491,7 +491,7 @@ class PricelistXLS(XLS):
             print(self.color_row)
             model = model[:self.color_row.index.values[0]-1]
             model.drop(model[model.isna().all(axis=1)==True].index.values)
-            model.iloc[:,:2 = model.iloc[:,:2].fillna(method='ffill').astype('str')
+            model.iloc[:,:2] = model.iloc[:,:2].fillna(method='ffill').astype('str')
             if model['Color-Variant'].isna().all():
                 model.loc[:,['Color-Variant']] = model.loc[:,['Color-Variant']].fillna('').astype('str')
             else:
