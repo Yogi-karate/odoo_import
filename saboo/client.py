@@ -103,7 +103,7 @@ def _init_logging(conf):
     if conf['level']:
         _logger.setLevel(conf['level'])
 
-    if 'handler' in conf and conf['handller']['logfile']:
+    if conf['handler'] in conf and conf['handler']['logfile']:
         handler = logging.FileHandler(conf['logfile'])
         handler.setFormatter(default_format)
         _logger.addHandler(handler) 

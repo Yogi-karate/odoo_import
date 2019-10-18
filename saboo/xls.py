@@ -576,7 +576,7 @@ class PricelistXLS(XLS):
         print(colors)
         for index in model.index.values:
             row = model.loc[index:index,:].copy()
-            if  'Colors' in colors and row['Color-Variant'].isna().values[0]:
+            if  'Colors' in colors and not row['Color-Variant'].values[0]:
                 for color in colors['Colors']:
                     if color:
                         row.loc[:,'Color'] = color.strip()
@@ -610,6 +610,7 @@ class PricelistXLS(XLS):
     def create_pricelist_items(self,sheet,pricelist_id):
         model = self.prepare(sheet)
         if not model.empty:
+            print(model['Color-Variant'])
             colors = self.getColors(model)
             print("The colors are ",colors)
             model = self.transform_variant_colors(model,colors)
@@ -621,6 +622,7 @@ class PricelistXLS(XLS):
 
 
     def update_products(self, model):
+            print(model)
             model['Variant'] = model['Variant'] +'('+model['Color-Variant'] + ')'
             #model['Variant'] = [s.split(None, 1)[1] for s in model['Variant']]
             arr = {}
