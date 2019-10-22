@@ -541,6 +541,7 @@ class PricelistXLS(XLS):
             try:
                 _logger.debug("Started Processing sheet  %s -----------",sheet)
                 if self._validate(self.sb[sheet]) and sheet == 'EON':
+                #if self._validate(self.sb[sheet]) and sheet in ['EON','XCENT']:
                     model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
                     if not model.empty:
                         sheet_result['values'] = pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(self.sb[sheet]),None)
