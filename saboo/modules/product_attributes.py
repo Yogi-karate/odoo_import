@@ -136,22 +136,26 @@ class ProductAttributeValues(Module):
             attr_id = values[lines]['id']
             name = values[lines]['name']
             vals = values[lines]['values']
+            record_pos = {}
+            pos = 0
             for val in vals:
-                pos = 0
                 cached_id = False
                 if self.attribute_values:
                     if name in self.attribute_values and val in self.attribute_values[name]:
                         cached_id = self.attribute_values[name][val]
                         _logger.debug("attribute found in cache %s",cached_id)
                 if not cached_id:
-                    if not val in [x['name'] for x in records]:
-                        record = {}
-                        record['name'] = val
-                        record['attribute_id'] = attr_id
-                        record['pos'] = pos
-                        _logger.debug("attribute record %s",record)
-                        records.append(record)
-                        # Inserting dummy value
+                        if not val in record_pos:
+                            record = {}
+                            record['name'] = val
+                            record['attribute_id'] = attr_id
+                            record['pos'] = [pos]
+                            _logger.debug("attribute record %s",record)
+                            records.append(record)
+                            record_pos[val] = record 
+                        else:
+                            record_pos[val]['pos'].append(pos)  
+                        # Inserting dummy value   
                         ids.append(0)
                 else:
                     ids.append(cached_id)
@@ -161,7 +165,8 @@ class ProductAttributeValues(Module):
                 new_ids = model.create(records)
                 _logger.debug("the new ids created %s",new_ids)
                 for index in range(len(records)):
-                    ids[records[index]['pos']] = new_ids[index]
+                    for posn_id in records[index]['pos']: 
+                        ids[posn_id] = new_ids[index]
             _logger.debug("the ids created %s",ids)
 
             #ids = model.create([{'attribute_id':attr_id,'name':vals[index]} for index in range(len(vals))])
