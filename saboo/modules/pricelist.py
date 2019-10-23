@@ -143,7 +143,7 @@ class PricelistItem(Module):
             pricelist_items.update({'item':fields})
             item_components = [ {'item_id':'','type_id':[x['id'] for x in components if x['name'] == comp][0],
                     'price':pricelist[comp]} for comp in component_columns]
-            _logger.debug("the components %s",item_components)
+            #_logger.debug("the components %s",item_components)
             pricelist_items.update({'components':item_components})
             price_lists.append(pricelist_items)
         price_list_item_ids = self.model.create([ x['item'] for x in price_lists])

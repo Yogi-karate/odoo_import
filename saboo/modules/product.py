@@ -28,6 +28,10 @@ import saboo
 import saboo.tools as tools
 from .module import Module
 import pandas as pd
+import logging
+
+_logger = logging.getLogger(__name__)
+
 
 class ProductTemplate(Module):
     
@@ -50,7 +54,7 @@ class ProductTemplate(Module):
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
         ids = self._create_records(products,attribute_values,self.model)
-        print(ids,">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        _logger.debug(" %s >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",ids)
         return ids
 
     def _create_records(self,products,attribute_values,model):
@@ -106,12 +110,14 @@ class ProductTemplate(Module):
                         temp.append(i)
             value_id = []
             for x in product_values:
+                _logger.debug("the temp values in value ids %s %s",temp,x)
+                _logger.debug("the attribute values in value ids %s",attribute_values)
                 if attribute_values[x] not in temp:
                     temp.append(attribute_values[x])
                     #value_id = [6,False,[attribute_values[x]]]
             value_id = [6,False,temp]
             value_ids.append(value_id)
-            print(value_ids)
+            _logger.debug("the values ids in create value ids %s",value_ids)
             return value_ids
 
     def write(self,path):
@@ -128,6 +134,7 @@ class ProductProduct(Module):
 
     def __init__(self,conf):
         self.conf = conf
+        self.product_cache = None
 
     def get_product_product_list(self,odoo):
         if not odoo:
@@ -146,61 +153,70 @@ class ProductProduct(Module):
         model = odoo.env[self._name]
         ids = model.search(criteria)
         return ids
-    def search_for_duplicate(self,product,attributes,attribute_columns,odoo):
+   
+    def search_for_duplicate(self,product):
+        vals = []
+        _logger.debug("the product is %s",product)
+        if self.product_cache:
+            product_key = product['NAME']+'_'+product['COLOR']+'_'+product['VARIANT']
+            _logger.debug("the product key is %s",product_key)
+            if product_key in self.product_cache:
+                product_id = self.product_cache[product_key]
+                _logger.debug("the product from cache is %s",product_id)
+                return product_id
+            
+            
+    def search_for_duplicate_old(self,product,attributes,attribute_columns,odoo):
         duplicate = -1
         vals = []
         val_ids = []
         for column in attribute_columns:
                 vals.append(product[column])
                 val_ids.append(attributes[column]['values'][product[column]])
+
         product_products = self.model.search([('product_tmpl_id','=',int(product['product_tmpl_id'])),('color_value','=',vals[0]),('variant_value','=',vals[1])])    
         if len(product_products) > 0:
             return product_products
-        # for x in product_products:
-        #     if vals[0] in x['attribute_value_ids'] and vals[1] in x['attribute_value_ids']:
-        #                 duplicate = x['id']
-        #     if duplicate > 0:
-        #             return [duplicate]
         return val_ids
+
     def create(self,products,attributes,attribute_columns,odoo):
         ids = []
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
+        if not self.product_cache:
+            product_cache = {}
+            _logger.debug("the product is %s",products[0])
+            mod = odoo.execute_kw(self._name,'search_read',[[('product_tmpl_id','=',products[0]['product_tmpl_id'])]],{'fields':['id','name','color_value','variant_value']})
+            product_cache = {x['name']+'_'+x['color_value']+'_'+x['variant_value']:x['id'] for x in mod}
+            _logger.debug("product search result %s",product_cache)
+            self.product_cache = product_cache
         self.model = odoo.env[self._name]
-        product_list = []
+        records = []
         for product in products:
-            dup = self.search_for_duplicate(product,attributes,attribute_columns,odoo)
-            if len(dup) == 1:
-                ids.append(dup[0])
+            pos = 0
+            dup = self.search_for_duplicate(product)
+            if dup:
+                ids.append(dup)
             else:
                 record = {}
                 record['name'] = product['NAME']
                 record['product_tmpl_id'] = product['product_tmpl_id']
-                record['attribute_value_ids'] = [(6,'_',dup)]
-                idm = self.model.create(record)
-                ids.append(idm)
-                # record = {}
-                # record['name'] = product['NAME']
-                # record['product_tmpl_id'] = product['product_tmpl_id']
-                # record['attribute_value_ids'] = self.create_attribute_value_ids(product,attributes,attribute_columns)
-                # idm = self.model.create(record)
-                # ids.append(idm)
+                record['attribute_value_ids'] = self.create_attribute_value_ids(product,attributes,attribute_columns)
+                #idm = self.model.create(record)
+                record['pos'] = pos
+                records.append(record)
+                ids.append(0)
+                pos +=1
+
+        new_ids = self.model.create(records)
+        for index in range(len(records)):
+            ids[records[index]['pos']] = new_ids[index]
         return ids
 
     def create_attribute_value_ids(self,product,attributes,attribute_columns):
-        
         value_ids = []
         for column in attribute_columns:
-           # print(attributes[column]['values'],"-------------------------column")
             value_id = attributes[column]['values'][product[column]]
             value_ids.append(value_id)
-        print(value_ids,"--------------------------------------------------column")
+        _logger.debug(" %s --------------------------------------------------column",value_ids)
         return [(6,'_',value_ids)]
-
-    # def create(self,values,odoo):
-    #     if not odoo:
-    #         odoo = tools.login(conf['odoo'])
-    #     model = odoo.env[self._name]
-    #     for lines in range(len(values)):
-    #         for key,vals in values[lines].items():
-    #             model.create([{'attribute_id':key,'name':vals[index]} for index in range(len(vals))])

@@ -480,15 +480,15 @@ class PricelistXLS(XLS):
     def prepare(self,sheet):
         try:
             model = sheet.iloc[:,1:]
-            print(model.iloc[2,5:].values)
+            _logger.debug("component columms ------> %s",model.iloc[2,5:].values)
             pricelist_columns = [ " ".join(str(x).split()) for x in model.iloc[2,5:].values]
             model = model[4:]
             model = model.reset_index(drop=True)
             pricelist_columns = ['Model','Variant','Color-Variant','Variant-1','Ex S/R Price']+pricelist_columns
             model.columns = pricelist_columns
-            print(model[model['Model'].str.upper().str.contains('COLOUR')==True].index.values[0])
+            _logger.debug(model[model['Model'].str.upper().str.contains('COLOUR')==True].index.values[0])
             self.color_row = model[model['Model'].str.upper().str.contains('COLOUR')==True]
-            print(self.color_row)
+            _logger.debug(self.color_row)
             model = model[:self.color_row.index.values[0]-1]
             model.drop(model[model.isna().all(axis=1)==True].index.values)
             model.iloc[:,:2] = model.iloc[:,:2].fillna(method='ffill').astype('str')
@@ -517,10 +517,10 @@ class PricelistXLS(XLS):
         header_row = sheet.iloc[1,:].fillna("").astype(str)
         header_row = [x.upper() for x in header_row.values]
         header_column = sheet[sheet.columns[1]].str.upper()
-        if 'MODEL' in header_row and header_row[6] and 'EX' in header_row[6] and header_column.str.contains('COLOUR').any():
+        if 'MODEL' in header_row and header_row[5] and header_row[5].strip().startswith('EX') and header_column.str.contains('COLOUR').any():
             return True
         else:
-            print("Invalid Sheet",len(sheet.columns))
+            _logger.error("Invalid Sheet %s",len(sheet.columns))
             return False
         return False
 
@@ -533,14 +533,14 @@ class PricelistXLS(XLS):
     def execute(self,file_name = 'h1',company_id = 1):
         pricelist_items = modules.PricelistItem(self.conf)
         pricelist_id = self.create_price_list(file_name,company_id)
-        print("the pricelist created is ",pricelist_id)
+        _logger.debug("the pricelist created is %s ",pricelist_id)
         result = []
         _logger.debug("The pricelist file with sheets %s read and number of sheets is  %s ",self.sb.keys(), str(len(self.sb.keys())))
         for sheet in self.sb:
             sheet_result = {'name':sheet,'status':'','values':''}
             try:
-                _logger.debug("Started Processing sheet  %s -----------",sheet)
-                if self._validate(self.sb[sheet]) and sheet == 'EON':
+                _logger.info("Started Processing sheet  %s -----------",sheet)
+                if self._validate(self.sb[sheet]) and sheet  in ['SANTRO','VENUE']:
                 #if self._validate(self.sb[sheet]) and sheet in ['EON','XCENT']:
                     model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
                     if not model.empty:
@@ -557,15 +557,17 @@ class PricelistXLS(XLS):
                 _logger.exception(ex)
                 sheet_result['status'] = 'error'
                 sheet_result['values'] = str(ex) 
-            _logger.debug("Finished Processing sheet  %s -----------",sheet)
+            _logger.info("Finished Processing sheet  %s -----------",sheet)
             result.append(sheet_result)
         return result
         
         
     def getColors(self,sheet):
         colors = self.color_row.values[0][1]
+        _logger.debug("The colors in get colors %s",colors)
         if colors:    
             col_array = colors.split(':')
+            _logger.debug("The color array in get colors %s",col_array)
             if col_array and len(col_array) >2:
                 #handle metallic and nonmetallic 
                 mcolors = col_array[1].strip().split(',')
@@ -576,11 +578,11 @@ class PricelistXLS(XLS):
                 return {'Metallic':mcolors[:len(mcolors)-1],'NonMetallic':nonm or False}
             if col_array and len(col_array) ==1:
                 #handle colors for all variants
+                _logger.debug("The dict in get colors %s",{'Colors':col_array[0].strip().split(',')})
                 return {'Colors':col_array[0].strip().split(',')}
 
     def transform_variant_colors(self,model,colors):
         c_model = pd.DataFrame()
-        print(colors)
         for index in model.index.values:
             row = model.loc[index:index,:].copy()
             if  'Colors' in colors and not row['Color-Variant'].values[0]:
@@ -610,26 +612,30 @@ class PricelistXLS(XLS):
         attribute_columns = ['COLOR','VARIANT']
         product_product = modules.ProductProduct(self.conf)
         prods['Product ID'] = product_product.create(prods.to_dict(orient='records'),attribute_values,attribute_columns,None)
-        print(prods,"------------------------------------------")
+        _logger.debug(" %s ------------------------------------------",prods)
         return prods
 
 
     def create_pricelist_items(self,sheet,pricelist_id):
         model = self.prepare(sheet)
         if not model.empty:
-            print(model['Color-Variant'])
+            _logger.debug(model['Color-Variant'])
             colors = self.getColors(model)
-            print("The colors are ",colors)
-            model = self.transform_variant_colors(model,colors)
-            model = self.update_products(model)
-            return model
+            _logger.debug("The colors are %s",colors)
+            if colors:
+                model = self.transform_variant_colors(model,colors)
+                model = self.update_products(model)
+                return model
+            else:
+                _logger.error("Error while preparing sheet - No Colors could be extracted")
+                return pd.DataFrame()    
         else:
-            print("Error while preparing sheet")
+            _logger.error("Error while preparing sheet")
             return pd.DataFrame()
 
 
     def update_products(self, model):
-            print(model)
+            _logger.debug(model)
             arr = {}
             colors = model['Color'].values
             variants = model['Variant'].values
@@ -640,11 +646,14 @@ class PricelistXLS(XLS):
                     variants[index] = variants[index] + '('+col_vars[index]+')'
                 if var1_vars[index]:
                     variants[index] = variants[index] + '('+var1_vars[index]+')'
-            print(variants)
+            _logger.debug(" the variants ---- %s",variants)
             arr['COLOR'] = colors
             arr['VARIANT'] = variants
+            _logger.info("-----Starting Attribute Creation-------")
             attributes = modules.ProductAttributes(self.conf)
             attribute_values = attributes.create(arr,None)
+            _logger.info("-----End of Attribute Creation------- %s",attribute_values)
+            _logger.info("---Starting Template Creation-------")
             prod_templates = []
             lis = {}
             lis['name'] = model['Model'][0]
@@ -652,14 +661,17 @@ class PricelistXLS(XLS):
             prod_templates.append(lis)
             product = modules.ProductTemplate(self.conf)
             template_ids = product.create(prod_templates,attribute_values,None)
+            _logger.info("-----End of Template Creation-------")
             prods = model[['Model', 'Color', 'Variant']].copy()
             prods.columns = ['NAME','COLOR','VARIANT']
             prods.loc[:,'product_tmpl_id'] = template_ids[0]
 
             # update whole table with product_product id
-            print("Length",len(prods), len(model['Variant']),"--------------------",model['Model'])
+            _logger.info("---Starting product Creation-------")
+            _logger.debug("Length %s %s %s %s",len(prods), len(model['Variant']),"--------------------",model['Model'])
             prods = self.update_product_id(prods,attribute_values)
-            print("Length------",len(prods), len(model['Variant']))
+            _logger.info("-----End of Product Creation-------")
+            _logger.debug("Length------ %s %s",len(prods), len(model['Variant']))
             model.loc[:,'product_id'] = prods['Product ID']
             return model   
 

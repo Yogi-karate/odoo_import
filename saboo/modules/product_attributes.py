@@ -28,6 +28,9 @@ import saboo
 import saboo.tools as tools
 from .module import Module
 import pandas as pd
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class ProductAttributes(Module):
     
@@ -41,7 +44,7 @@ class ProductAttributes(Module):
         self.conf = conf
 
     def create(self,attribute_values,odoo):
-        print("########################################################")
+        _logger.debug("########################################################")
         conf = self.conf['attributes']
         if not conf['columns'] or not conf['fields']:
             raise Exception("Invalid Configuration - Cannot find Attributes to create")
@@ -54,7 +57,7 @@ class ProductAttributes(Module):
         write_ids = []
         for attribute in attribute_list:
             att = model.search([('name','=',attribute['name'])])
-            print(attribute['name'],"llllllllllllllllllllllllllllllllllllllllllllllllllll")
+            _logger.debug("llllllllllllllllllllllllllllllllllllllllllllllllllll %s",attribute['name'])
             if len(att) == 0:
                 att = model.create(attribute)
                 self.ids.append(att)
@@ -69,7 +72,7 @@ class ProductAttributes(Module):
             record['name'] = attribute 
             record['type'] = 'select'
             record['create_variant'] = 'dynamic'
-            print(record)
+            _logger.debug('Attribute record %s',record)
             attribute_list.append(record)
         return attribute_list
     
@@ -87,6 +90,7 @@ class ProductAttributeValues(Module):
 
     def __init__(self,conf):
         self.conf = conf
+        self.attribute_values = None
    
     def get_attribute_values(self,odoo):
         if not odoo:
@@ -104,8 +108,8 @@ class ProductAttributeValues(Module):
             if value_ids:
                 values = []
                 for value_id in value_ids:
-                    print(value_id)
-                    print(value_id.name)
+                    _logger.debug("the values id in get atribs %s",value_id)
+                    _logger.debug("the values name in get atribs %s",value_id.name)
                     values.append(value_id.name)
                 res[column] = {'id':attr_id[0],'values':{values[index]:value_ids[index].id for index in range(len(value_ids))}}
         return res
@@ -114,24 +118,52 @@ class ProductAttributeValues(Module):
     def create(self,values,odoo):
         if not odoo:
             odoo = tools.login(conf['odoo'])
+        if not self.attribute_values:
+            attributes = {}
+            for lines in range(len(values)):
+                name = values[lines]['name']
+                attr_id = values[lines]['id']
+                mod = odoo.execute_kw(self._name,'search_read',[[('attribute_id','=',attr_id)]],{'fields':['id','name']})
+                result = {x['name']:x['id'] for x in mod}
+                attributes.update({name:result})
+                _logger.debug("attribute values in cache %s",attributes)
+            self.attribute_values = attributes
         model = odoo.env[self._name]
         res = {}
         for lines in range(len(values)):
             ids = []
+            records = []
             attr_id = values[lines]['id']
             name = values[lines]['name']
             vals = values[lines]['values']
-            print(name,vals)
-            count = 0
             for val in vals:
-                mod = model.search([('attribute_id','=',attr_id),('name','=',val)])
-                if not mod:
-                    record = {}
-                    record['name'] = val
-                    record['attribute_id'] = attr_id
-                    ids.append(model.create(record))
+                pos = 0
+                cached_id = False
+                if self.attribute_values:
+                    if name in self.attribute_values and val in self.attribute_values[name]:
+                        cached_id = self.attribute_values[name][val]
+                        _logger.debug("attribute found in cache %s",cached_id)
+                if not cached_id:
+                    if not val in [x['name'] for x in records]:
+                        record = {}
+                        record['name'] = val
+                        record['attribute_id'] = attr_id
+                        record['pos'] = pos
+                        _logger.debug("attribute record %s",record)
+                        records.append(record)
+                        # Inserting dummy value
+                        ids.append(0)
                 else:
-                    ids.append(mod[0])
+                    ids.append(cached_id)
+                pos += 1
+            
+            if records:
+                new_ids = model.create(records)
+                _logger.debug("the new ids created %s",new_ids)
+                for index in range(len(records)):
+                    ids[records[index]['pos']] = new_ids[index]
+            _logger.debug("the ids created %s",ids)
+
             #ids = model.create([{'attribute_id':attr_id,'name':vals[index]} for index in range(len(vals))])
             res[name] = {'id':attr_id,'values':{vals[index]:ids[index] for index in range(len(ids))}}
         return res
