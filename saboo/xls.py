@@ -503,6 +503,7 @@ class PricelistXLS(XLS):
                 model.loc[:,['Variant-1']] = model.loc[:,['Variant-1']].fillna(method='ffill').astype('str')
             model.iloc[:,4:] = model.iloc[:,4:].fillna(0).astype('int')
             model.loc[:,'Variant-1'] = model.loc[:,'Variant-1'].fillna('').astype('str')
+            model = model.drop_duplicates(['Model','Variant','Color-Variant','Variant-1'],keep='first').reset_index(drop=True)
             return model
         except Exception as ex:
             _logger.exception(ex)
