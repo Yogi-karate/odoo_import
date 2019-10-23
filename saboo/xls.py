@@ -28,6 +28,7 @@ import logging
 from datetime import datetime
 
 import saboo.modules as modules
+import saboo.api as api
 
 _logger = logging.getLogger(__name__)
 
@@ -535,13 +536,13 @@ class PricelistXLS(XLS):
         pricelist_id = self.create_price_list(file_name,company_id)
         _logger.debug("the pricelist created is %s ",pricelist_id)
         result = []
+        task = api.PriceListJobApi(self.conf)
         _logger.debug("The pricelist file with sheets %s read and number of sheets is  %s ",self.sb.keys(), str(len(self.sb.keys())))
         for sheet in self.sb:
             sheet_result = {'name':sheet,'status':'','values':''}
             try:
                 _logger.info("Started Processing sheet  %s -----------",sheet)
-                if self._validate(self.sb[sheet]) and sheet  in ['SANTRO','VENUE']:
-                #if self._validate(self.sb[sheet]) and sheet in ['EON','XCENT']:
+                if self._validate(self.sb[sheet]):
                     model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
                     if not model.empty:
                         sheet_result['values'] = pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(self.sb[sheet]),None)
