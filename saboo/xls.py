@@ -146,19 +146,24 @@ class XLS(object):
             _logger.debug("Nothing to write")
 
     def _validate(self):
-        sb = self.sb
-        self._errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() 
-                        | sb['ORDERDATE'].isna() | sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)] 
-        if(len(self._errored.index)>0):
-            _logger.error("Sheet has " + str(len(self._errored.index))+" invalid records")
-            self.sb = sb.drop(self._errored.index.values)
-            # Cleaning up indexes
-            self.sb.reset_index(drop=True)
-            _logger.info("Total Records to be processes are " + str(len(sb.index)))
-            self.write(self._errored,'errors')
-        else:   
-            return True
-            
+        temp = self.sb
+        for sheet in temp:
+            print('sheet--',sheet)
+        #self.sb = self.sb['Jan']
+            self.sb = temp[sheet]
+            sb = self.sb
+            self._errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() 
+                            | sb['ORDERDATE'].isna() | sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)] 
+            if(len(self._errored.index)>0):
+                _logger.error("Sheet has " + str(len(self._errored.index))+" invalid records")
+                self.sb = sb.drop(self._errored.index.values)
+                # Cleaning up indexes
+                self.sb.reset_index(drop=True)
+                _logger.info("Total Records to be processes are " + str(len(sb.index)))
+                self.write(self._errored,'errors')
+            else:   
+                return True
+
     def fillna(self):
         columns = self.get_all_columns()
         for column in columns:
@@ -240,7 +245,7 @@ class XLS(object):
         #     self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
         return self.execute(company_id,job_id)
 
-    def execute(self):
+    def execute(self, company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
         if self._valid:
             #_logger.info("Processing "+str(self.sb['ORDERNO'].count())+" Records")
             _logger.info("The modules to be executed are " + str(self.modules) + " in mode " + self._mode)
