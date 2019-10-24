@@ -46,7 +46,7 @@ def upload_file():
             saboo.client._init_logging(app.config['odoo_conf']['Logging'])
             xls = saboo.PricelistXLS(app.config['odoo_conf'])
             if body and 'name' in body:
-                return jsonify(xls.handle_request(request.files.get('file'), body['name']))
+                return jsonify(xls.handle_request(request.files.get('file'), body['name'], body['company'], body['jobLogID']))
             else:
                 return jsonify(xls.handle_request(request.files.get('file')))
         except Exception as ex:
@@ -55,7 +55,38 @@ def upload_file():
     else:
         flash('Allowed file types are xls,xlsx,csv')
         return jsonify({'status':'error','message':'invalid request'})
-        
+ 
+@app.route('/uploadSaleData', methods=['POST'])
+def upload_sale_data_file():
+    print(app.config['odoo_conf'])
+    print(request.files)
+    print(dict(request.headers))
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('No file part')
+            return jsonify({'status':'error','message':'no files in request'})
+    file = request.files['file']
+    if file.filename == '':
+        flash('No file selected for uploading')
+        return redirect(request.url)
+    if file and allowed_file(file.filename):
+        try:
+            body = request.form
+            filename = secure_filename(file.filename)
+            saboo.client._init_odoo(app.config['odoo_conf'])
+            saboo.client._init_logging(app.config['odoo_conf']['Logging'])
+            xls = saboo.XLS(app.config['odoo_conf'])
+            if body and 'name' in body:
+                return jsonify(xls.handle_request(request.files.get('file'), body['company'], body['jobLogID']))
+            else:
+                return jsonify(xls.handle_request(request.files.get('file')))
+        except Exception as ex:
+            _logger.exception(ex)
+            return jsonify({"error":"ex"})
+    else:
+        flash('Allowed file types are xls,xlsx,csv')
+        return jsonify({'status':'error','message':'invalid request'})
+
 @app.route('/getlead', methods=['GET'])
 def getCrmLead():
     name = 'crm.lead'

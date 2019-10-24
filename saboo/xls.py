@@ -58,12 +58,18 @@ class XLS(object):
         else:
             _logger.error("Invalid Configuration - Cannot execute")
             raise Exception("Cannot process excel file")    
-        self.xlsx = pd.ExcelFile(self.path or saboo_path)
-        self.original = pd.read_excel(self.xlsx,self.sheet,converters = self.get_all_columns())
-        self.sb = self.original
-        if 'purchase_order' in self.modules:
-            self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
-        self.prepare()
+        if conf['xls'] and conf['xls']['mode'] == 'auto':
+            self.xlsx = pd.ExcelFile(self.path or saboo_path)
+            self.original = pd.read_excel(self.xlsx,sheet_name=None)
+            self.sb = self.original
+            if 'purchase_order' in self.modules:
+                self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
+            self.prepare()
+        else:
+            _logger.info("-----XLS not loaded in init------")
+    
+
+        
     
     def column_converters(self,attr):
         try:
@@ -142,7 +148,7 @@ class XLS(object):
     def _validate(self):
         sb = self.sb
         self._errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() 
-                        | sb['ORDERDATE'].isna() |sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)] 
+                        | sb['ORDERDATE'].isna() | sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)] 
         if(len(self._errored.index)>0):
             _logger.error("Sheet has " + str(len(self._errored.index))+" invalid records")
             self.sb = sb.drop(self._errored.index.values)
@@ -152,6 +158,7 @@ class XLS(object):
             self.write(self._errored,'errors')
         else:   
             return True
+            
     def fillna(self):
         columns = self.get_all_columns()
         for column in columns:
@@ -222,6 +229,16 @@ class XLS(object):
     def getColumnDict(self,list_cols):
         d = {list_cols[i]:[] for i in range(0,len(list_cols))}
         return d 
+
+
+    def handle_request(self,file,company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
+        self.xlsx = pd.ExcelFile(file)
+        self.original = pd.read_excel(self.xlsx,sheet_name=None)
+        self.sb = self.original
+        self.prepare()
+        # if 'purchase_order' in self.modules:
+        #     self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
+        return self.execute(company_id,job_id)
 
     def execute(self):
         if self._valid:
@@ -526,17 +543,18 @@ class PricelistXLS(XLS):
             return False
         return False
 
-    def handle_request(self,file,file_name = 'h1',company_id = 1):
+    def handle_request(self,file,file_name = 'h1',company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
         self.xlsx = pd.ExcelFile(file)
         self.original = pd.read_excel(self.xlsx,sheet_name=None)
         self.sb = self.original
-        return self.execute(file_name,company_id)
+        return self.execute(file_name,company_id,job_id)
 
-    def execute(self,file_name = 'h1',company_id = 1):
+    def execute(self,file_name = 'h1',company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
         pricelist_items = modules.PricelistItem(self.conf)
         pricelist_id = self.create_price_list(file_name,company_id)
         _logger.debug("the pricelist created is %s ",pricelist_id)
         result = []
+        status = 'success'
         task = api.PriceListJobApi(self.conf)
         _logger.debug("The pricelist file with sheets %s read and number of sheets is  %s ",self.sb.keys(), str(len(self.sb.keys())))
         for sheet in self.sb:
@@ -547,20 +565,25 @@ class PricelistXLS(XLS):
                     model = self.create_pricelist_items(self.sb[sheet],pricelist_id)
                     if not model.empty:
                         sheet_result['values'] = pricelist_items.create(model.to_dict(orient='records'),pricelist_id,self.getPricelistColumns(self.sb[sheet]),None)
+                        status = 'success'
                     else:
                         _logger.error("Could not Prepare sheet")
                         sheet_result['status'] = 'incorrect sheet'
                         sheet_result['values'] = 'Sheet has problems'
+                        status = 'error'
                 else:
                     _logger.error("Validation Failed !!!!!")
                     sheet_result['status'] = 'validation failed'
                     sheet_result['values'] ='Not a Valid Format'
+                    status = 'error'
             except Exception as ex:
                 _logger.exception(ex)
                 sheet_result['status'] = 'error'
                 sheet_result['values'] = str(ex) 
+                status = 'error'
             _logger.info("Finished Processing sheet  %s -----------",sheet)
             result.append(sheet_result)
+        task.finishJob(job_id, status)    
         return result
         
         
