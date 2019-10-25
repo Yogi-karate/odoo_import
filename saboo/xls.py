@@ -250,15 +250,17 @@ class XLS(object):
         for sheet in self.sb:
             result = {'name':sheet}
             response.append(result)
-
         return response
 
     def execute(self, company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
+        status = 'success'
+        task = api.PriceListJobApi(self.conf)
         if self._valid:
             #_logger.info("Processing "+str(self.sb['ORDERNO'].count())+" Records")
             _logger.info("The modules to be executed are " + str(self.modules) + " in mode " + self._mode)
             for module in self.modules:
-               # module = self.modules[key]
+                try:
+                # module = self.modules[key]
                 method = 'create_'+module+'s'
                 if self._mode is 'manual':
                     method  = method+'_manual'
@@ -268,8 +270,14 @@ class XLS(object):
                 finish = datetime.now() - start
                 finish_time = int(finish.total_seconds()/60)
                 _logger.info("END CREATING ---> "+module.upper() + " - Finished in - "+str(finish_time if finish_time >0 else finish.total_seconds()))
+                status = 'success'
+            except Exception as ex:
+                _logger.exception(ex)
+                status = 'error'
         else:
             _logger.error("Cannot execute with invalid data")
+             status = 'error'
+        task.finishJob(job_id, status)        
 
     def create_attributes(self):
         attributes = modules.ProductAttributes(self.conf)
