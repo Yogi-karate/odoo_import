@@ -565,16 +565,17 @@ class PricelistXLS(XLS):
         return False
 
     def handle_request(self,file,file_name = 'h1',company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
+        print('handle_request----')
         self.xlsx = pd.ExcelFile(file)
         self.original = pd.read_excel(self.xlsx,sheet_name=None)
         self.sb = self.original
-        process = Thread(target=self.execute, args=[file_name, company_id, job_id])
-        process.start()
-        response = []
-        for sheet in self.sb:
-            result = {'name':sheet}
-            response.append(result)
-        return response
+        # process = Thread(target=self.execute, args=[file_name, company_id, job_id])
+        # process.start()
+        # response = []
+        # for sheet in self.sb:
+        #     result = {'name':sheet}
+        #     response.append(result)
+        return self.execute(file_name,company_id,job_id)
 
     def execute(self,file_name = 'h1',company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
         pricelist_items = modules.PricelistItem(self.conf)
