@@ -260,23 +260,23 @@ class XLS(object):
             _logger.info("The modules to be executed are " + str(self.modules) + " in mode " + self._mode)
             for module in self.modules:
                 try:
-                # module = self.modules[key]
-                method = 'create_'+module+'s'
-                if self._mode is 'manual':
-                    method  = method+'_manual'
-                _logger.info("START CREATING ---> "+module.upper())
-                start = datetime.now()    
-                self.write(getattr(self,method)(),module)
-                finish = datetime.now() - start
-                finish_time = int(finish.total_seconds()/60)
-                _logger.info("END CREATING ---> "+module.upper() + " - Finished in - "+str(finish_time if finish_time >0 else finish.total_seconds()))
-                status = 'success'
-            except Exception as ex:
-                _logger.exception(ex)
-                status = 'error'
+                    # module = self.modules[key]
+                    method = 'create_'+module+'s'
+                    if self._mode is 'manual':
+                        method  = method+'_manual'
+                    _logger.info("START CREATING ---> "+module.upper())
+                    start = datetime.now()    
+                    self.write(getattr(self,method)(),module)
+                    finish = datetime.now() - start
+                    finish_time = int(finish.total_seconds()/60)
+                    _logger.info("END CREATING ---> "+module.upper() + " - Finished in - "+str(finish_time if finish_time >0 else finish.total_seconds()))
+                    status = 'success'
+                except Exception as ex:
+                     _logger.exception(ex)
+                     status = 'error'
         else:
             _logger.error("Cannot execute with invalid data")
-             status = 'error'
+            status = 'error'
         task.finishJob(job_id, status)        
 
     def create_attributes(self):
