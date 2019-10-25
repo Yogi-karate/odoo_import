@@ -29,6 +29,7 @@ from datetime import datetime
 
 import saboo.modules as modules
 import saboo.api as api
+from threading import Thread
 
 _logger = logging.getLogger(__name__)
 
@@ -146,11 +147,11 @@ class XLS(object):
             _logger.debug("Nothing to write")
 
     def _validate(self):
-        temp = self.sb
-        for sheet in temp:
-            print('sheet--',sheet)
-        #self.sb = self.sb['Jan']
-            self.sb = temp[sheet]
+        # temp = self.sb
+        # for sheet in temp:
+        #     print('sheet--',sheet)
+            self.sb = self.sb['Jan']
+           # self.sb = temp[sheet]
             sb = self.sb
             self._errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() 
                             | sb['ORDERDATE'].isna() | sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)] 
@@ -243,7 +244,14 @@ class XLS(object):
         self.prepare()
         # if 'purchase_order' in self.modules:
         #     self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
-        return self.execute(company_id,job_id)
+        process = Thread(target=self.execute, args=[company_id, job_id])
+        process.start()
+        response = []
+        for sheet in self.sb:
+            result = {'name':sheet}
+            response.append(result)
+
+        return response
 
     def execute(self, company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
         if self._valid:
@@ -552,7 +560,13 @@ class PricelistXLS(XLS):
         self.xlsx = pd.ExcelFile(file)
         self.original = pd.read_excel(self.xlsx,sheet_name=None)
         self.sb = self.original
-        return self.execute(file_name,company_id,job_id)
+        process = Thread(target=self.execute, args=[file_name, company_id, job_id])
+        process.start()
+        response = []
+        for sheet in self.sb:
+            result = {'name':sheet}
+            response.append(result)
+        return response
 
     def execute(self,file_name = 'h1',company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
         pricelist_items = modules.PricelistItem(self.conf)
