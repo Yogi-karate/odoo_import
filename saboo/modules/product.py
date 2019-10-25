@@ -192,8 +192,8 @@ class ProductProduct(Module):
             self.product_cache = product_cache
         self.model = odoo.env[self._name]
         records = []
+        pos = 0
         for product in products:
-            pos = 0
             dup = self.search_for_duplicate(product)
             if dup:
                 ids.append(dup)
