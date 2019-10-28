@@ -89,6 +89,7 @@ def _parse_config(sysconf):
     parser.add_argument("-c", "--conf_file",
                         help="Specify config file", metavar="FILE")
     args,other_args = parser.parse_known_args(sysconf)
+    print(args.conf_file,type(args.conf_file))
     if args.conf_file:
         config.read([args.conf_file])
         conf = dict(config.items())

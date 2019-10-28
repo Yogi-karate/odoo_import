@@ -1,0 +1,4 @@
+zappa==0.48.2
+flask==1.0.2
+flask_cors==3.0.8
+boto3==1.10.2
