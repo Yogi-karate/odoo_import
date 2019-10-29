@@ -4,13 +4,13 @@ python:
 - '3.7'
 
 install:
-- pip install -r requirements.txt
+- pip install -r ./upload/requirements.txt
 
 script:
 - echo "Hello before Zappa"
 
 after_success:
-- zappa update dev
+- zappa update dev -s ./upload/import.json
 
 notifications:
   slack: saboogroupworkspace:tco87KFtlVfRyVKhQoaEfKQn#smartdms-dev
