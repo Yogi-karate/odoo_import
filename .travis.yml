@@ -2,15 +2,17 @@ language: python
 
 python: 
 - '3.7'
+
 jobs:
   include:
-    - stage: upload
-      install: pip install -r ./upload/requirements.txt
-      script: echo "Hello before Zappa"
-      after_success:zappa update dev -s ./upload/flask_gateway.json
-    - stage: odoo_import
-      install: pip install -r ./odoo/import_requirements.txt
-      script: echo "Hello before Zappa"
-      after_success: zappa update dev -s ./odoo/import.json
+    install:
+    - pip install -r ./upload/requirements.txt
+
+    script:
+    - echo "Hello before Zappa"
+
+    after_success:
+    - zappa update dev -s ./upload/flask_gateway.json
+
 notifications:
   slack: saboogroupworkspace:tco87KFtlVfRyVKhQoaEfKQn#smartdms-dev
