@@ -12,15 +12,13 @@ jobs:
     - pip install -r ./upload/requirements.txt
     script:
     - echo "Hello before Zappa"
-    after_success:
     - zappa update dev -s ./upload/flask_gateway.json
-    
+
     - stage: import
     install:
     - pip install -r ./odoo/import_requirements.txt
     script:
     - echo "Hello before Zappa import"
-    after_success:
     - zappa update dev -s ./odoo/import.json
 
 notifications:
