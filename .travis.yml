@@ -14,5 +14,14 @@ jobs:
     after_success:
     - zappa update dev -s ./upload/flask_gateway.json
 
+    install:
+    - pip install -r ./odoo/import_requirements.txt
+
+    script:
+    - echo "Hello before Zappa import"
+
+    after_success:
+    - zappa update dev -s ./odoo/import.json
+
 notifications:
   slack: saboogroupworkspace:tco87KFtlVfRyVKhQoaEfKQn#smartdms-dev
