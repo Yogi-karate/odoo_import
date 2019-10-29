@@ -150,7 +150,7 @@ class PricelistItem(Module):
         for index in range(len(price_lists)):
             components = price_lists[index]['components']
             for component in components:
-                component.update({'item_id':price_list_item_ids[index]})
+                component.update({'item_id':price_list_item_ids[index],'mandatory':True})
             price_lists[index].update({'item_id':price_list_item_ids[index]})
         final_comps = []
         for pricelist in price_lists:
