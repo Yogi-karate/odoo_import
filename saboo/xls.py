@@ -146,61 +146,53 @@ class XLS(object):
 		else:
 			_logger.debug("Nothing to write")
 
-	def _validate(self,sheet):
-		# temp = self.sb
-		# for sheet in temp:
-		#     print('sheet--',sheet)
-		      #self.sb = self.sb['Jan']
-		   # self.sb = temp[sheet]
-			sb = sheet
+	def _validate(self):
+			sb = self.sb
 			self._errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() 
 							| sb['ORDERDATE'].isna() | sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)] 
 			if(len(self._errored.index)>0):
 				_logger.error("Sheet has " + str(len(self._errored.index))+" invalid records")
-				sb = sb.drop(self._errored.index.values)
+				self.sb = sb.drop(self._errored.index.values)
 				# Cleaning up indexes
-				sb.reset_index(drop=True)
+				self.sb.reset_index(drop=True)
 				_logger.info("Total Records to be processes are " + str(len(sb.index)))
 				self.write(self._errored,'errors')
 			else:   
 				return True
 
-	def fillna(self,sheet):
-        sb = sheet
+	def fillna(self):
 		columns = self.get_all_columns()
 		for column in columns:
 			_logger.debug("The column to fillna is " + column)
-			sb[column] = sb[column].str.strip()
-			sb[column] = sb[column].fillna('')
+			self.sb[column] = self.sb[column].str.strip()
+			self.sb[column] = self.sb[column].fillna('')
 
 
 	def prepare(self):
 		conf = self.conf['xls']
 		self._mode = self.conf['xls']['mode']
-		output_dir = self.root + conf['output_folder']
-		op = os.path.join(output_dir,conf['version'])
-		if op and not os.path.isdir(op):
-			os.makedirs(op)
-		_logger.debug("The outut directory is"+op) 
-		self._output_dir = op+'/'
-		self._original = self.sb.copy()
+		# output_dir = self.root + conf['output_folder']
+		# op = os.path.join(output_dir,conf['version'])
+		# if op and not os.path.isdir(op):
+		# 	os.makedirs(op)
+		# _logger.debug("The outut directory is"+op) 
+		self._output_dir = '/tmp'
+		# self._original = self.sb.copy()
 		_logger.debug("Ignore errors  in sheet - "+conf['ignore_errors'])
-
-        for sheet in self.sb:
-    		if self._validate(self.sb[sheet]) or conf['ignore_errors'] == '1':
-    			self.fillna(self.sb[sheet])
-    			_logger.debug("Setting Up Product Data from Xl File")    
-    			self.prepareProducts(self.sb[sheet])
-    			_logger.debug("Setting Up Customer Data from Xl File")    
-    			self.prepareCustomers(self.sb[sheet])
-    		else:
-    			_logger.error("Error in processing the xl file. Please fix and retry")
-    			self._valid = False
+		if self._validate() or conf['ignore_errors'] == '1':
+			self.fillna()
+			_logger.debug("Setting Up Product Data from Xl File")    
+			self.prepareProducts()
+			_logger.debug("Setting Up Customer Data from Xl File")    
+			self.prepareCustomers()
+		else:
+			_logger.error("Error in processing the xl file. Please fix and retry")
+			self._valid = False
 
 
-	def prepareProducts(self,sheet):
+	def prepareProducts(self):
 		
-		sb = sheet
+		sb = self.sb
 		sb.loc[:,'External NAME'] = ""
 		gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_columns])
 		prod_id = 0
@@ -215,9 +207,9 @@ class XLS(object):
 		_logger.debug(self._products)
 
 	
-	def prepareCustomers(self,sheet):
+	def prepareCustomers(self):
 		if 'customer' in self.modules:
-			sb = sheets
+			sb = self.sb
 			sb['Customer/External ID'] = sb.index
 			sb['Customer/External ID'] =sb['Customer/External ID'].apply(lambda index: "customer_template_"+str(index))
 			sb.loc[:,'CDUP'] = sb.duplicated(self.customer_attribute_columns,False).values
@@ -240,19 +232,9 @@ class XLS(object):
 		return d 
 
 
-	def handle_request(self,file,company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
-		self.xlsx = pd.ExcelFile(file)
-		self.original = pd.read_excel(self.xlsx,sheet_name=None)
-		self.sb = self.original
+	def handle_request(self,sheet,company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
+		self.sb = sheet
 		self.prepare()
-		# if 'purchase_order' in self.modules:
-		#     self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
-		# process = Thread(target=self.execute, args=[company_id, job_id])
-		# process.start()
-		# response = []
-		# for sheet in self.sb:
-		# 	result = {'name':sheet}
-		# 	response.append(result)
 		return self.execute(company_id, job_id)
 
 	def execute(self, company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
@@ -770,5 +752,4 @@ class PricelistXLS(XLS):
 			_logger.debug("Length------ %s %s",len(prods), len(model['Variant']))
 			model.loc[:,'product_id'] = prods['Product ID']
 			return model   
-
 

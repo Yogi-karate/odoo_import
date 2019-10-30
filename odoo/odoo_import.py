@@ -3,6 +3,7 @@ import boto3
 import json
 import saboo
 import io
+import pandas as pd
 
 _logger = logging.getLogger(__name__)
 
@@ -11,26 +12,37 @@ class OdooImport(object):
 	def __init__(self,conf):
 		self.conf = conf
 
-	def import_pricelist(self,bucket_name,file_name):
-		_logger.info("import bucket %s",bucket_name)
-		_logger.info("import file %s",file_name)
-		if file_name and bucket_name:
-			try:
-				s3_client = boto3.client('s3')
-				s3_response_object = s3_client.get_object(Bucket=bucket_name, Key=file_name)
-				object_content = s3_response_object['Body'].read()
-				obj_data = s3_response_object['Metadata']
-				_logger.debug("******* s3 object****",obj_data)
-				if not 'joblogid' in obj_data or not 'name' in obj_data:
-					_logger.error("Error in metadata %s",obj_data)
-					return {'message':"Error -- Could not find MetaData in file"}
-				else:
-					saboo.client._init_odoo(self.conf)
-					saboo.client._init_odoo(self.conf)
-					xls = saboo.PricelistXLS(self.conf)
-					return xls.handle_request(io.BytesIO(object_content),obj_data['name'],obj_data['company'],obj_data['joblogid'])
-			except Exception as e:
-				_logger.error("Exception in import process",e)
-				return {'error':'Could Not Load file from S3'}
+	def import_pricelist(self,file,file_metadata):
+		_logger.info("import bucket %s",file_metadata)
+		try:
+			if not 'joblogid' in file_metadata or not 'name' in file_metadata:
+				_logger.error("Error in file_metadata %s",file_metadata)
+				return {'message':"Error -- Could not find file_metadata in file"}
+			else:
+				saboo.client._init_odoo(self.conf)
+				xls = saboo.PricelistXLS(self.conf)
+				return xls.handle_request(io.BytesIO(file),file_metadata['name'],file_metadata['company'],file_metadata['joblogid'])
+		except Exception as e:
+			_logger.error("Exception in import process",e)
+			return {'error':'Could Not Load file from S3'}
+
+	def import_sale_data(self,file,file_metadata):
+		_logger.info("import bucket %s",file_metadata)
+		result = []
+		try:
+			if not 'joblogid' in file_metadata or not 'name' in file_metadata or not 'company' in file_metadata:
+				_logger.error("Error in metadata %s",file_metadata)
+				return {'message':"Error -- Invalid file metadata"}
+			else:
+				saboo.client._init_odoo(self.conf)
+				xls = saboo.XLS(self.conf)
+				xlsx = pd.ExcelFile(io.BytesIO(file))
+				sb = pd.read_excel(xlsx,sheet_name=None)
+				_logger.debug("The total number of sheets in file %s",sb.keys())
+				for sheet in sb:
+					result.append(xls.handle_request(sb[sheet],file_metadata['company'],file_metadata['joblogid']))
+		except Exception as e:
+			_logger.error("Exception in import process",e)
+			return {'error':'Could Not Load file from S3'}
 
 
