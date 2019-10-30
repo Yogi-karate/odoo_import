@@ -107,7 +107,7 @@ class PricelistItem(Module):
     _name = 'product.pricelist.item'
     _field_list = {"applied_on":"0_product_variant","min_quantity":0,"compute_price":"fixed",
     "base":"list_price","price_discount":0,"pricelist_id":66,"product_id":2011,
-    "date_start":"2019-10-07","date_end":"2019-10-10","fixed_price":2500000,"percent_price":0}
+    "date_start":"2019-11-01","fixed_price":2500000,"percent_price":0}
  
     def __init__(self,conf):
         self.conf = conf

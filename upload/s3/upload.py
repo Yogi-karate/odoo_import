@@ -26,10 +26,11 @@ class S3Upload(object):
 	# Upload the file
 		s3_client = boto3.client('s3')
 		try:
-			if 'joblogid' in data and 'job_type' in data:
-				filename = data['job_type']+'_'+data['joblogid']+'.xls'
+			if 'jobLogID' in data and 'job_type' in data:
+				filename = data['job_type']+'_'+data['jobLogID']+'.xls'
 				response = s3_client.upload_fileobj(file, bucket,filename,ExtraArgs={"Metadata":data})
 			else:
+				print("error in data")
 				return False
 		except ClientError as e:
 			logging.error(e)

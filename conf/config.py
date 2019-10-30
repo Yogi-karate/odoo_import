@@ -14,9 +14,10 @@ def _parse_config(config_file):
 			conf = dict(config.items())
 			for key in conf:
 				print(key)
+			return conf    
 		except Exception as ex:
 			print("Error Occured in loading configuration !!!!!",ex)
-		return conf    
+		
 
 def _init_logging():
 	logging.config.fileConfig(config)

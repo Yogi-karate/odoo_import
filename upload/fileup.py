@@ -41,8 +41,11 @@ def async_upload_pricelist():
             filename = secure_filename(file.filename)
             s3_object = s3(app.config)
             body.update({'job_type':'pricelist'})
-            s3_object.upload_excel(file,body)
-            return jsonify({'status':'success','message':'uploaded to s3 !!! '})
+            result = s3_object.upload_excel(file,body)
+            if result:
+                return jsonify({'status':'success','message':'uploaded to s3 !!! '})
+            else:
+                return jsonify({'status':'error','message':'did not upload file !!! '})
         except Exception as ex:
             _logger.exception(ex)
             return jsonify({"error":"ex"})
