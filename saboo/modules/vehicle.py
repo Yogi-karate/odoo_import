@@ -47,13 +47,16 @@ class Vehicle(Module):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
-        for vehicle in vehicles:
-            veh = self.model.search([('name','=',vehicle.get('name'))])
-            if not veh:
-                self.model.create(vehicle)
-            else:
+        veh_list = []
+        duplicate_list = odoo.execute_kw(self._name,'search_read',[],{'fields':['id','name']})
+        result = {x['name']:x['id'] for x in duplicate_list}   
+        for vehicle in vehicles:    
+            if result.get(vehicle.get('name')):
                 continue
-        #odoo.run(self._name,'create',vehicles)
+                #self.model.create(vehicle)
+            else:
+                veh_list.append(vehicle)
+        odoo.run(self._name,'create',veh_list)
 
 class Inventory(Module):
 

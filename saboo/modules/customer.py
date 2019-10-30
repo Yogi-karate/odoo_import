@@ -56,17 +56,23 @@ class Customer(Module):
         self.model = odoo.env[self._name]
         ids = []
         posn = 0
+        customers_list = []
+        customer_cache = {}
+        duplicate_list = odoo.execute_kw(self._name,'search_read',[],{'fields':['id','name','mobile']})
+        if len(duplicate_list) > 0:
+            customer_cache = {x['name']+str(x['mobile']):x['id'] for x in duplicate_list}
+        duplicate_list = None
         for customer in customers:
-            cust = self.model.search([('name','=',customer.get('name')),('mobile','=',customer.get('mobile'))])
-            if not cust:
-                customer['pos'] = posn    
+            if customer_cache.get(customer.get('name')+str(customer.get('mobile'))):
+                ids.append(customer_cache.get(customer.get('name')+str(customer.get('mobile'))))
+            else:
+                customer['pos'] = posn  
                 customers_list.append(customer)
                 ids.append(0)
-            else:
-                ids.append(cust[0])
-        new_ids = self.model.create(customer_list)
-        for index in range(len(records)):
-            ids[records[index]['pos']] = new_ids[index]
+            posn+=1
+        new_ids = self.model.create(customers_list)
+        for index in range(len(customers_list)):
+            ids[customers_list[index]['pos']] = new_ids[index]
         return ids
 
     def write(self,path):

@@ -1,3 +1,4 @@
+
 # -*- coding: UTF-8 -*-
 ##############################################################################
 #
@@ -48,16 +49,27 @@ class SaleOrder(Module):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
+        duplicate_list = odoo.execute_kw(self._name,'search_read',[],{'fields':['id','name']})
+        result = {x['name']:x['id'] for x in duplicate_list} 
+        so_list=[]
         for so in sale_list:
-            so_dup = self.model.search([('name','=',so.get('name'))])
-            if not so_dup:
-                print("no duplicate")
-                so['order_line'] = self.create_order_line(so)
-                self.model.create(so)
-            else:
-                print("duplicate sale order")
+            if result.get(so.get('name')):
                 continue
-        #odoo.run(self._name,'create',sale_list)
+            else:
+                so['order_line'] = self.create_order_line(so)
+                so_list.append(so)
+        odoo.run(self._name,'create',so_list)
+
+        
+            # so_dup = self.model.search([('name','=',so.get('name'))])
+            # if not so_dup:
+            #     print("no duplicate")
+            #     so['order_line'] = self.create_order_line(so)
+            #     self.model.create(so)
+            # else:
+            #     print("duplicate sale order")
+            #     continue
+        
 
     def create_order_line(self,so):
         order_line = {'product_qty':1,'product_uom':1}
