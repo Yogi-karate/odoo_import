@@ -9,7 +9,7 @@
         	"FILEUP_CONFIG":"dev"
         },
         "events": [{
-            "function": "odoo.odoo_import.handler",
+            "function": "odoo.handler.handler",
             "event_source": {
                   "arn":  "arn:aws:s3:::odoo.file.import",
                   "events": [
