@@ -53,26 +53,31 @@ class ProductTemplate(Module):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
-        ids = self._create_records(products,attribute_values,self.model)
+        ids = self._create_records(products,attribute_values)
         _logger.debug(" %s >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",ids)
         return ids
 
-    def _create_records(self,products,attribute_values,model):
+    def _create_records(self,products,attribute_values):
         product_list = []
         for product in products:
-            pro = model.search([('name','=',product['name'])])
-            if len(pro) <= 0:
+            product_name = product['name'].strip()
+            print("Product dict in template creation!!!!!!!!!!!",product,product_name)
+            pro = self.model.search([('name','=',product_name)],limit=1)
+            if not pro:
                 record = {}
-                record['name'] = product['name'] 
+                record['name'] = product_name
                 record['type'] = 'product'
                 record['tracking'] = 'serial'
+                record['company_id'] = product['company_id']
+                # redo - remove hard coding later fetch from db
+                record['categ_id'] = 4
                 record['attribute_line_ids'] = self._create_attribute_lines(product['values'],attribute_values,[])
-                x = model.create(record)
+                x = self.model.create(record)
                 product_list.append(x)
             else:
                 record = {}
                 record['attribute_line_ids'] = self._create_attribute_lines(product['values'],attribute_values,pro)
-                model.write(pro,record)
+                self.model.browse(pro[0]).write(record)
                 product_list.append(pro[0])
         return product_list
     
@@ -110,8 +115,8 @@ class ProductTemplate(Module):
                         temp.append(i)
             value_id = []
             for x in product_values:
-                _logger.debug("the temp values in value ids %s %s",temp,x)
-                _logger.debug("the attribute values in value ids %s",attribute_values)
+                # _logger.debug("the temp values in value ids %s %s",temp,x)
+                # _logger.debug("the attribute values in value ids %s",attribute_values)
                 if attribute_values[x] not in temp:
                     temp.append(attribute_values[x])
                     #value_id = [6,False,[attribute_values[x]]]
@@ -156,28 +161,14 @@ class ProductProduct(Module):
    
     def search_for_duplicate(self,product):
         vals = []
-        _logger.debug("the product is %s",product)
+        #_logger.debug("the product is %s",product)
         if self.product_cache:
             product_key = product['NAME']+'_'+product['COLOR']+'_'+product['VARIANT']
-            _logger.debug("the product key is %s",product_key)
+           # _logger.debug("the product key is %s",product_key)
             if product_key in self.product_cache:
                 product_id = self.product_cache[product_key]
-                _logger.debug("the product from cache is %s",product_id)
+                #_logger.debug("the product from cache is %s",product_id)
                 return product_id
-            
-            
-    def search_for_duplicate_old(self,product,attributes,attribute_columns,odoo):
-        duplicate = -1
-        vals = []
-        val_ids = []
-        for column in attribute_columns:
-                vals.append(product[column])
-                val_ids.append(attributes[column]['values'][product[column]])
-
-        product_products = self.model.search([('product_tmpl_id','=',int(product['product_tmpl_id'])),('color_value','=',vals[0]),('variant_value','=',vals[1])])    
-        if len(product_products) > 0:
-            return product_products
-        return val_ids
 
     def create(self,products,attributes,attribute_columns,odoo):
         ids = []
@@ -185,8 +176,9 @@ class ProductProduct(Module):
             odoo = tools.login(self.conf['odoo'])
         if not self.product_cache:
             product_cache = {}
-            _logger.debug("the product is %s",products[0])
-            mod = odoo.execute_kw(self._name,'search_read',[[('product_tmpl_id','=',products[0]['product_tmpl_id'])]],{'fields':['id','name','color_value','variant_value']})
+            product_template_ids = list(set([int(x['product_tmpl_id']) for x in products ]))
+            _logger.debug("the product ids are %s",product_template_ids)
+            mod = odoo.execute_kw(self._name,'search_read',[[('product_tmpl_id','in',product_template_ids)]],{'fields':['id','name','color_value','variant_value']})
             product_cache = {x['name']+'_'+x['color_value']+'_'+x['variant_value']:x['id'] for x in mod}
             _logger.debug("product search result %s",product_cache)
             self.product_cache = product_cache
@@ -199,7 +191,6 @@ class ProductProduct(Module):
                 ids.append(dup)
             else:
                 record = {}
-                record['name'] = product['NAME']
                 record['product_tmpl_id'] = product['product_tmpl_id']
                 record['attribute_value_ids'] = self.create_attribute_value_ids(product,attributes,attribute_columns)
                 #idm = self.model.create(record)
@@ -207,7 +198,7 @@ class ProductProduct(Module):
                 records.append(record)
                 ids.append(0)
                 pos +=1
-
+        _logger.info(" Creating %s New products ",len(records))
         new_ids = self.model.create(records)
         for index in range(len(records)):
             ids[records[index]['pos']] = new_ids[index]

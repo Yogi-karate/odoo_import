@@ -24,22 +24,40 @@ The :class:`ODOO` class is the entry point to manage `Odoo` servers using odoo R
 You can use this one to write `Python` programs that performs a variety of
 automated jobs that communicate with a `Odoo` server.
 """
-
-__author__ = 'Rammohan Tangirala'
-__email__ = 'ram.tangirala@gmail.com'
-__licence__ = 'LGPL v3'
-__version__ = '0.0.1'
-
+import saboo
+import saboo.tools as tools
 from .module import Module
-from .field import Field
-from .purchase_order import PurchaseOrder
-from .sale_order import SaleOrder
-from .product_attributes import ProductAttributes,ProductAttributeValues
-from .product import ProductTemplate
-from .product import ProductProduct
-from .customer import Customer,Vendor,Lead
-from .user import User
-from .vehicle import Vehicle,Inventory
-from .pricelist import Pricelist,PricelistItem,PricelistComponent,PriceListComponentType
+import pandas as pd
+import logging
+import threading
 
-# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
+
+_logger = logging.getLogger(__name__)
+
+class User(Module):
+	
+	_name = 'res.users'
+	ids = []
+	def __init__(self,conf):
+		if not conf['attributes'] or not conf['odoo']:
+			raise Exception("Cannot create attributes")
+		self.conf = conf
+	
+	def user_change_company(self,company_id):
+		odoo = tools.login(self.conf['odoo'])
+		current_company = odoo.env.user.company_id
+		print("The copany values are ",company_id,current_company,current_company.id)
+		if current_company.id != company_id:
+			odoo.env.user.company_id = company_id
+			_logger.warn("Changing Users comapny - execute before any ORM -- new company %s",odoo.env.user.company_id.name)
+		else:
+			_logger.info("Not Changing Users company , user belongs to %s",current_company.name)
+	def create(self,customers,odoo):
+	   pass
+
+	def write(self,path):
+		pass
+
+	@property
+	def get_field_list(self):
+		return self._field_list

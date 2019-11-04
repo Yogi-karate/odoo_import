@@ -50,28 +50,25 @@ class XLS(object):
 				 sheet='Sale'):
 		if conf and conf['xls'] and conf['xls']['root'] and conf['Modules']['name']:
 			self.conf = conf
-			self.root = conf['xls']['root']
-			if not self.root.endswith('/'):
-				self.root = self.root+'/'
-			self.path = self.root+conf['xls']['xl_file']
-			self.modules = conf['Modules']['name'].split(',')
-			self.sheet = conf['xls']['sheet_name']
+			xl_conf = self.conf['xls']
+			self._mode = xl_conf['mode']
+			if self._mode == 'auto':	
+				self.root = xl_conf['root']
+				if not self.root.endswith('/'):
+					self.root = self.root+'/'
+				self.path = self.root+xl_conf['xl_file']
+				self.sheet_name = xl_conf['sheet_name']
+				self.modules = conf['Modules']['name'].split(',')
+				self._output_dir = self.root + xl_conf['output_folder']
+				op = os.path.join(self._output_dir,xl_conf['version'])
+				if op and not os.path.isdir(op):
+					os.makedirs(op)
+				_logger.debug("The outut directory is"+op)
+			else:
+				_logger.info("-----XLS not loaded - Mode Not Auto------")
 		else:
-			_logger.error("Invalid Configuration - Cannot execute")
-			raise Exception("Cannot process excel file")    
-		if conf['xls'] and conf['xls']['mode'] == 'auto':
-			self.xlsx = pd.ExcelFile(self.path or saboo_path)
-			self.original = pd.read_excel(self.xlsx,sheet_name=None)
-			self.sb = self.original
-			if 'purchase_order' in self.modules:
-				self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
-			self.prepare()
-		else:
-			_logger.info("-----XLS not loaded in init------")
-	
-
+			raise Exception("Invalid Configuration - Cannot execute")    
 		
-	
 	def column_converters(self,attr):
 		try:
 			method_name = attr + "_columns"
@@ -145,53 +142,71 @@ class XLS(object):
 			df.to_csv(self._output_dir+filename+'.csv')
 		else:
 			_logger.debug("Nothing to write")
+	
+	def deduplicate(self,sb,list_cols):
+		dedup = pd.DataFrame()
+		for col in list_cols:
+			sb[col] = sb[col].str.upper()
+		dedup = sb.drop_duplicates(list_cols,keep='first')
+		return dedup
+	
+	def getColumnDict(self,list_cols):
+		d = {list_cols[i]:[] for i in range(0,len(list_cols))}
+		return d 
+
+	def init_file(self):
+		conf = self.conf
+		if conf['xls'] and conf['xls']['mode'] == 'auto':
+			print("Reading Xl file ---- ")
+			xlsx = pd.ExcelFile(self.path or saboo_path)
+		else:
+			xlsx = pd.ExcelFile(self.path or saboo_path)
+		self.original = pd.read_excel(xlsx,sheet_name=self.sheet_name)
+		sb = self.original.copy()
+		if 'purchase_order' in self.modules:
+			self.vendor_master =  pd.read_excel(self.xlsx, 'vendor')
+		return sb
 
 	def _validate(self):
 			sb = self.sb
-			self._errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() 
+			errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() 
 							| sb['ORDERDATE'].isna() | sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)] 
-			if(len(self._errored.index)>0):
-				_logger.error("Sheet has " + str(len(self._errored.index))+" invalid records")
-				self.sb = sb.drop(self._errored.index.values)
+			if(len(errored.index)>0):
+				_logger.error("Sheet has %s invalid records at %s", str(len(errored.index)),errored.index.values)
+				self.sb = sb.drop(errored.index.values)
 				# Cleaning up indexes
 				self.sb.reset_index(drop=True)
-				_logger.info("Total Records to be processes are " + str(len(sb.index)))
-				self.write(self._errored,'errors')
+				_logger.info("Total Records to be processed are " + str(len(self.sb.index)))
+				self.write(errored,'errors')
 			else:   
 				return True
 
 	def fillna(self):
 		columns = self.get_all_columns()
+		print("the columns in fillna",columns)
 		for column in columns:
 			_logger.debug("The column to fillna is " + column)
-			self.sb[column] = self.sb[column].str.strip()
 			self.sb[column] = self.sb[column].fillna('')
-
+			self.sb[column] = self.sb[column].astype('str').str.strip()
 
 	def prepare(self):
-		conf = self.conf['xls']
-		self._mode = self.conf['xls']['mode']
-		# output_dir = self.root + conf['output_folder']
-		# op = os.path.join(output_dir,conf['version'])
-		# if op and not os.path.isdir(op):
-		# 	os.makedirs(op)
-		# _logger.debug("The outut directory is"+op) 
-		self._output_dir = '/tmp'
-		# self._original = self.sb.copy()
-		_logger.debug("Ignore errors  in sheet - "+conf['ignore_errors'])
-		if self._validate() or conf['ignore_errors'] == '1':
+		if self._mode == 'auto':
+			print("Hello from prepare")
+			self.sb = self.init_file()
+		_logger.debug("Ignore errors  in sheet - "+self.conf['xls']['ignore_errors'])
+		if self._validate() or self.conf['xls']['ignore_errors'] == '1':
 			self.fillna()
 			_logger.debug("Setting Up Product Data from Xl File")    
 			self.prepareProducts()
 			_logger.debug("Setting Up Customer Data from Xl File")    
 			self.prepareCustomers()
+			return True
 		else:
 			_logger.error("Error in processing the xl file. Please fix and retry")
-			self._valid = False
+			return False
 
 
-	def prepareProducts(self):
-		
+	def prepareProducts(self):		
 		sb = self.sb
 		sb.loc[:,'External NAME'] = ""
 		gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_columns])
@@ -206,7 +221,6 @@ class XLS(object):
 		self._products = products
 		_logger.debug(self._products)
 
-	
 	def prepareCustomers(self):
 		if 'customer' in self.modules:
 			sb = self.sb
@@ -219,30 +233,17 @@ class XLS(object):
 		else:
 			_logger.debug("No customer prep needed")
 
-	
-	def deduplicate(self,sb,list_cols):
-		dedup = pd.DataFrame()
-		for col in list_cols:
-			sb[col] = sb[col].str.upper()
-		dedup = sb.drop_duplicates(list_cols,keep='first')
-		return dedup
-	
-	def getColumnDict(self,list_cols):
-		d = {list_cols[i]:[] for i in range(0,len(list_cols))}
-		return d 
-
-
 	def handle_request(self,sheet,company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
 		self.sb = sheet
-		self.prepare()
 		return self.execute(company_id, job_id)
+	
 
 	def execute(self, company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
-		status = 'success'
-		task = api.PriceListJobApi(self.conf)
-		if self._valid:
-			#_logger.info("Processing "+str(self.sb['ORDERNO'].count())+" Records")
+		if self.prepare():
+			_logger.info("Processing "+str(self.sb['ORDERNO'].count())+" Records")
+			modules.User(self.conf).user_change_company(company_id)
 			_logger.info("The modules to be executed are " + str(self.modules) + " in mode " + self._mode)
+			self.company_id = company_id
 			for module in self.modules:
 				try:
 					# module = self.modules[key]
@@ -261,8 +262,7 @@ class XLS(object):
 					 status = 'error'
 		else:
 			_logger.error("Cannot execute with invalid data")
-			status = 'error'
-		task.finishJob(job_id, status)        
+			status = 'error'     
 
 	def create_attributes(self):
 		attributes = modules.ProductAttributes(self.conf)
@@ -289,6 +289,7 @@ class XLS(object):
 		gp_prods = self._products.groupby([self._products['NAME'].str.upper()])
 		for name,group in gp_prods:
 			template = {'name':name,'values':[(x,group[x].drop_duplicates().values) for x in self.attribute_columns]}
+			template['company_id'] = self.company_id
 			prod_templates.append(template)
 		product = modules.ProductTemplate(self.conf)
 		template_ids = product.create(prod_templates,self.attribute_values,None)
@@ -306,6 +307,7 @@ class XLS(object):
 		print("*******************************************************",prods)
 		print("===============================================",self._products)
 		product_product = modules.ProductProduct(self.conf)
+		prods['company_id'] = self.company_id
 		prods['Product ID'] = product_product.create(prods.to_dict(orient='records'),self.attribute_values,self.attribute_columns,None)
 		gp_prods = sb.groupby([sb[x].str.upper() for x in self.product_attribute_columns])
 		for name,group in gp_prods:
@@ -402,8 +404,9 @@ class XLS(object):
 	
 	def create_vehicles(self):
 		vehicle_df = pd.DataFrame()
-		vehicle_df[['name','chassis_no','ref','registration_no','product_id']] = self.sb[['ENGINE','CHASSIS','ORDERNO','TRNO','External NAME']]
+		vehicle_df[['name','chassis_no','ref','registration_no','product_id','partner_id']] = self.sb[['ENGINE','CHASSIS','ORDERNO','TRNO','External NAME','Customer/External ID']]
 		vehicle = modules.Vehicle(self.conf)
+		#print(vehicle_df.to_dict(orient = 'records'))
 		vehicle.create(vehicle_df.to_dict(orient = 'records'),None)
 	
 	def init_inventory(self):
@@ -503,9 +506,8 @@ class PricelistXLS(XLS):
 
 	def prepare(self,sheet):
 		try:
-			model = sheet.iloc[:,1:]
-			_logger.debug("component columms ------> %s",model.iloc[2,5:].values)
-			pricelist_columns = [ " ".join(str(x).split()) for x in model.iloc[2,5:].values]
+			model = sheet.iloc[:,1:].dropna(axis='columns',how='all')
+			pricelist_columns = self.getPricelistColumns(sheet)
 			model = model[4:]
 			model = model.reset_index(drop=True)
 			pricelist_columns = ['Model','Variant','Color-Variant','Variant-1','Ex S/R Price']+pricelist_columns
@@ -534,8 +536,11 @@ class PricelistXLS(XLS):
 	
 	def getPricelistColumns(self,sheet):
 		# remove the first unwanted column
-		model = sheet.iloc[:,1:]
-		return [ " ".join(x.split()) for x in model.iloc[2,5:].values]
+		model = sheet.iloc[:,1:].dropna(axis='columns',how='all')
+		print("The model is ",model.head())
+		new_cols = model.iloc[2,5:].values
+		_logger.debug("component columms ------> %s",new_cols)
+		return [ " ".join(x.split()) for x in new_cols ]
 
 
 	def _validate(self,sheet):

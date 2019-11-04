@@ -42,20 +42,33 @@ class Vehicle(Module):
         if not conf['attributes'] or not conf['odoo']:
             raise Exception("Cannot create vehicles")
         self.conf = conf
+    
+    def get_order_ids(self,vehicle_list):
+        odoo = tools.login(self.conf['odoo'])
+        name = 'sale.order'
+        model = odoo.env[name]
+        order_list = odoo.execute_kw(name,'search_read',[[('name','in',[x['ref'] for x in vehicle_list])]],{'fields':['id','name']})
+        return {x['name']:x['id'] for x in order_list}
 
     def create(self,vehicles,odoo):
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
         veh_list = []
-        duplicate_list = odoo.execute_kw(self._name,'search_read',[],{'fields':['id','name']})
+        sale_orders = self.get_order_ids(vehicles)
+        #print("sale order cache",sale_orders)
+        vehicle_names = [vehicle['name'] for vehicle in vehicles]
+        duplicate_list = odoo.execute_kw(self._name,'search_read',[[('name','in',vehicle_names)]],{'fields':['id','name']})
         result = {x['name']:x['id'] for x in duplicate_list}   
         for vehicle in vehicles:    
             if result.get(vehicle.get('name')):
                 continue
-                #self.model.create(vehicle)
             else:
+                if vehicle['ref'] and vehicle['ref'] in sale_orders:
+                    print("setting order ids in vehicle")
+                    vehicle['order_id'] = sale_orders[vehicle['ref']]
                 veh_list.append(vehicle)
+        _logger.info("Creating %s new vehicles",len(veh_list))
         odoo.run(self._name,'create',veh_list)
 
 class Inventory(Module):

@@ -58,18 +58,22 @@ class Customer(Module):
         posn = 0
         customers_list = []
         customer_cache = {}
-        duplicate_list = odoo.execute_kw(self._name,'search_read',[],{'fields':['id','name','mobile']})
+        names = [customer['name'] for customer in customers]
+        mobiles = [customer['mobile'] for customer in customers]
+        duplicate_list = odoo.execute_kw(self._name,'search_read',[[('name','in',names)]],{'fields':['id','name','mobile']})
         if len(duplicate_list) > 0:
-            customer_cache = {x['name']+str(x['mobile']):x['id'] for x in duplicate_list}
+            customer_cache = {x['name']:str(x['id'])+'_'+x['mobile'] for x in duplicate_list}
         duplicate_list = None
         for customer in customers:
-            if customer_cache.get(customer.get('name')+str(customer.get('mobile'))):
-                ids.append(customer_cache.get(customer.get('name')+str(customer.get('mobile'))))
+            cust = customer_cache.get(customer.get('name'))
+            if cust and cust.split('_')[1] == customer['mobile']:
+                ids.append(int(cust.split('_')[0]))
             else:
                 customer['pos'] = posn  
                 customers_list.append(customer)
                 ids.append(0)
             posn+=1
+        _logger.info("Creating %s New Customer records in Odoo",len(customers_list))
         new_ids = self.model.create(customers_list)
         for index in range(len(customers_list)):
             ids[customers_list[index]['pos']] = new_ids[index]

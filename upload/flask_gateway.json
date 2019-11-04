@@ -18,5 +18,24 @@
         }
 
     },
+    "prod": {
+        "project_name": "file_upload", 
+        "role_name": "My-Zappa-Role", 
+        "role_arn": "arn:aws:iam::845374285743:role/My-Zappa-Role",
+        "s3_bucket": "fupload.zappa",
+        "aws_region":"ap-south-1",
+        "app_function": "upload.app",
+        "environment_variables":{
+            "FILEUP_CONFIG":"prod"
+        },
+        "cors": false,
+        "exclude": ["saboo*"],
+        "memory_size": 1024,
+        "timeout_seconds": 180,
+        "events":{
+
+        }
+
+    },
     
 }

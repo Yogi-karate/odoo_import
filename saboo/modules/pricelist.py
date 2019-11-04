@@ -46,9 +46,9 @@ class Pricelist(Module):
         self.conf = conf
 
     def create(self,name,company,odoo):
-        print("Hello from pricelist create")
+        print("Hello from pricelist create",company)
         pricelist = {"active":True,"discount_policy":"with_discount","currency_id":20,"country_group_ids":[[6,False,[]]]}
-        pricelist.update({"name":name,"comany_id":company})
+        pricelist.update({"name":name,"company_id":company})
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         id_exists = odoo.env[self._name].search([('name','=',name)],limit=1)
@@ -137,6 +137,7 @@ class PricelistItem(Module):
         components = PriceListComponentType(self.conf).getComponents()
         price_lists = []        
         for pricelist in items:
+            print("###########the item in pricelist create#######",pricelist)
             pricelist_items = {}
             fields = self._field_list.copy()
             fields.update({"fixed_price":str(pricelist['Ex S/R Price']), "pricelist_id":pricelist_id, "product_id" : pricelist['product_id']})

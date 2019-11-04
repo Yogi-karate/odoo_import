@@ -26,13 +26,17 @@ def _init_logging():
 	rooter.debug("Completed Logging Setup!!!!!!",)
 	#("Completed Logging Setup")
 
-def init():
-	print(os.environ.get('FILEUP_CONFIG'))
-	if os.environ.get('FILEUP_CONFIG'):
-		conf = os.environ.get('FILEUP_CONFIG')
-		config_filename = 'import_'+conf+'.conf'
+def init(file=None):
+	config_filename = None
+	if file:
+		config_filename = file
 	else:
-		config_filename = 'import.conf'
+		print(os.environ.get('FILEUP_CONFIG'))
+		if os.environ.get('FILEUP_CONFIG'):
+			conf = os.environ.get('FILEUP_CONFIG')
+			config_filename = 'import_'+conf+'.conf'
+		else:
+			config_filename = 'import.conf'
 	conf = _parse_config(config_filename)
 	_init_logging()
 	return conf

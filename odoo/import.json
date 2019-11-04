@@ -23,5 +23,29 @@
         "memory_size": 1024,
         "timeout_seconds": 180
     },
+    "prod": {
+        "project_name": "import_odoo", 
+        "role_name": "My-Zappa-Role", 
+        "role_arn": "arn:aws:iam::845374285743:role/My-Zappa-Role",
+        "s3_bucket": "fupload.zappa",
+        "aws_region":"ap-south-1",
+        "environment_variables":{
+            "FILEUP_CONFIG":"prod"
+        },
+        "events": [{
+            "function": "odoo.handler.handler",
+            "event_source": {
+                  "arn":  "arn:aws:s3:::odoo.file.prod.import",
+                  "events": [
+                    "s3:ObjectCreated:*" 
+                  ]
+               }
+        }],
+        "apigateway_enabled": false,
+        "delete_local_zip": true,
+        "keep_warm": false,
+        "memory_size": 1024,
+        "timeout_seconds": 180
+    },
     
 }
