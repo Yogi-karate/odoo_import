@@ -52,13 +52,13 @@ class XLS(object):
 			self.conf = conf
 			xl_conf = self.conf['xls']
 			self._mode = xl_conf['mode']
+			self.modules = conf['Modules']['name'].split(',')
 			if self._mode == 'auto':	
 				self.root = xl_conf['root']
 				if not self.root.endswith('/'):
 					self.root = self.root+'/'
 				self.path = self.root+xl_conf['xl_file']
 				self.sheet_name = xl_conf['sheet_name']
-				self.modules = conf['Modules']['name'].split(',')
 				self._output_dir = self.root + xl_conf['output_folder']
 				op = os.path.join(self._output_dir,xl_conf['version'])
 				if op and not os.path.isdir(op):
@@ -138,7 +138,7 @@ class XLS(object):
 		return self._products
    
 	def write(self,df,filename):
-		if df is not None:
+		if df is not None and self._mode == 'auto':
 			df.to_csv(self._output_dir+filename+'.csv')
 		else:
 			_logger.debug("Nothing to write")
@@ -183,7 +183,6 @@ class XLS(object):
 
 	def fillna(self):
 		columns = self.get_all_columns()
-		print("the columns in fillna",columns)
 		for column in columns:
 			_logger.debug("The column to fillna is " + column)
 			self.sb[column] = self.sb[column].fillna('')
@@ -191,7 +190,6 @@ class XLS(object):
 
 	def prepare(self):
 		if self._mode == 'auto':
-			print("Hello from prepare")
 			self.sb = self.init_file()
 		_logger.debug("Ignore errors  in sheet - "+self.conf['xls']['ignore_errors'])
 		if self._validate() or self.conf['xls']['ignore_errors'] == '1':
@@ -241,7 +239,7 @@ class XLS(object):
 	def execute(self, company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
 		if self.prepare():
 			_logger.info("Processing "+str(self.sb['ORDERNO'].count())+" Records")
-			modules.User(self.conf).user_change_company(company_id)
+			modules.User(self.conf).user_change_company(int(company_id))
 			_logger.info("The modules to be executed are " + str(self.modules) + " in mode " + self._mode)
 			self.company_id = company_id
 			for module in self.modules:
@@ -284,8 +282,6 @@ class XLS(object):
 
 	def create_products(self):
 		prod_templates = []
-		print("UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU")
-		print(self.products)
 		gp_prods = self._products.groupby([self._products['NAME'].str.upper()])
 		for name,group in gp_prods:
 			template = {'name':name,'values':[(x,group[x].drop_duplicates().values) for x in self.attribute_columns]}
@@ -304,8 +300,6 @@ class XLS(object):
 	def update_product_id(self):
 		prods = self.products
 		sb = self.sb
-		print("*******************************************************",prods)
-		print("===============================================",self._products)
 		product_product = modules.ProductProduct(self.conf)
 		prods['company_id'] = self.company_id
 		prods['Product ID'] = product_product.create(prods.to_dict(orient='records'),self.attribute_values,self.attribute_columns,None)
@@ -506,12 +500,7 @@ class PricelistXLS(XLS):
 
 	def prepare(self,sheet):
 		try:
-			model = sheet.iloc[:,1:].dropna(axis='columns',how='all')
-			pricelist_columns = self.getPricelistColumns(sheet)
-			model = model[4:]
-			model = model.reset_index(drop=True)
-			pricelist_columns = ['Model','Variant','Color-Variant','Variant-1','Ex S/R Price']+pricelist_columns
-			model.columns = pricelist_columns
+			model = self.setPricelistColumns(sheet)
 			_logger.debug(model[model['Model'].str.upper().str.contains('COLOUR')==True].index.values[0])
 			self.color_row = model[model['Model'].str.upper().str.contains('COLOUR')==True]
 			_logger.debug(self.color_row)
@@ -526,6 +515,9 @@ class PricelistXLS(XLS):
 				model.loc[:,['Variant-1']] = model.loc[:,['Variant-1']].fillna('').astype('str')
 			else:
 				model.loc[:,['Variant-1']] = model.loc[:,['Variant-1']].fillna(method='ffill').astype('str')
+			for column in model.columns[:4]:
+				print("Column in strip $$$$",column)
+				model[column] = model[column].str.strip().str.upper()
 			model.iloc[:,4:] = model.iloc[:,4:].fillna(0).astype('int')
 			model.loc[:,'Variant-1'] = model.loc[:,'Variant-1'].fillna('').astype('str')
 			model = model.drop_duplicates(['Model','Variant','Color-Variant','Variant-1'],keep='first').reset_index(drop=True)
@@ -533,15 +525,25 @@ class PricelistXLS(XLS):
 		except Exception as ex:
 			_logger.exception(ex)
 			return pd.DataFrame()
-	
 	def getPricelistColumns(self,sheet):
-		# remove the first unwanted column
-		model = sheet.iloc[:,1:].dropna(axis='columns',how='all')
-		print("The model is ",model.head())
-		new_cols = model.iloc[2,5:].values
-		_logger.debug("component columms ------> %s",new_cols)
-		return [ " ".join(x.split()) for x in new_cols ]
+		return self.setPricelistColumns(sheet).columns[5:]
 
+	def setPricelistColumns(self,model):
+		# remove the first unwanted column
+		model = model.iloc[:,1:].dropna(axis='columns',how='all')
+		new_cols = model.iloc[2,5:].values
+		pricelist_columns =  [ " ".join(x.split()) for x in new_cols]
+		_logger.debug("component columms ------> %s",pricelist_columns)
+		model = model[4:]
+		model = model.reset_index(drop=True)
+		pricelist_columns = ['Model','Variant','Color-Variant','Variant-1','Ex S/R Price']+pricelist_columns
+		model.columns = pricelist_columns
+		for column in pricelist_columns:
+			if 'ON-ROAD' in column.upper():
+				print("Deleting column %%%%%%%%%%%%%%%",column)
+				model = model.drop(column,axis=1)
+		_logger.debug("The new columns in sheet %s",model.columns)
+		return model
 
 	def _validate(self,sheet):
 		header_row = sheet.iloc[1,:].fillna("").astype(str)
@@ -614,6 +616,7 @@ class PricelistXLS(XLS):
 		result = []
 		status = 'success'
 		task = api.PriceListJobApi(self.conf)
+		modules.User(self.conf).user_change_company(int(company_id))
 		_logger.debug("The pricelist file with sheets %s read and number of sheets is  %s ",self.sb.keys(), str(len(self.sb.keys())))
 		for sheet in self.sb:
 			sheet_result = {'name':sheet,'status':'','values':''}
@@ -726,9 +729,9 @@ class PricelistXLS(XLS):
 			var1_vars = model['Variant-1'].values
 			for index in range(len(variants)):
 				if col_vars[index]:
-					variants[index] = variants[index] + '('+col_vars[index]+')'
+					variants[index] = variants[index] + ' ('+col_vars[index]+')'
 				if var1_vars[index]:
-					variants[index] = variants[index] + '('+var1_vars[index]+')'
+					variants[index] = var1_vars[index]+' '+variants[index]  
 			_logger.debug(" the variants ---- %s",variants)
 			arr['COLOR'] = colors
 			arr['VARIANT'] = variants

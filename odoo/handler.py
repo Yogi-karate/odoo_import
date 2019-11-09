@@ -24,7 +24,7 @@ def handler(event,context):
 				object_content = s3_response_object['Body'].read()
 				obj_data = s3_response_object['Metadata']
 				_logger.debug("******* s3 object**** %s",obj_data)
-				if not 'joblogid' in obj_data or not 'name' in obj_data or not 'job_type' in obj_data:
+				if not 'joblogid' in obj_data or not 'job_type' in obj_data:
 					_logger.error("Error in metadata %s",obj_data)
 					return {'message':"Error -- Could not find MetaData in file"}
 				else:

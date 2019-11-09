@@ -61,14 +61,12 @@ class ProductTemplate(Module):
         product_list = []
         for product in products:
             product_name = product['name'].strip()
-            print("Product dict in template creation!!!!!!!!!!!",product,product_name)
             pro = self.model.search([('name','=',product_name)],limit=1)
             if not pro:
                 record = {}
                 record['name'] = product_name
                 record['type'] = 'product'
                 record['tracking'] = 'serial'
-                record['company_id'] = product['company_id']
                 # redo - remove hard coding later fetch from db
                 record['categ_id'] = 4
                 record['attribute_line_ids'] = self._create_attribute_lines(product['values'],attribute_values,[])

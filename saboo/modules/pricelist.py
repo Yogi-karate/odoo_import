@@ -122,15 +122,16 @@ class PricelistItem(Module):
             return ids
 
     def create(self,items,pricelist_id,component_columns,odoo):
-        #print("items",items)
+        print("component_columns columns ####",component_columns)
         components = PriceListComponentType(self.conf).getComponents()# to fetch update data from table
         components_names = [x['name'] for x in self.components]
         if not odoo:
             odoo = tools.login(self.conf['odoo'])
         self.model = odoo.env[self._name]
         for comp in component_columns:
-            if not comp in components_names:
-                print("comp",comp)
+            print("The component name ------------",comp.upper())
+            if not comp in components_names :
+                _logger.debug("the component to be created ----",comp)
                 component_fields = self._component_field_list
                 component_fields.update({"name":comp,"description":comp })
                 PriceListComponentType(self.conf).create(component_fields,None)
