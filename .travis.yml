@@ -1,6 +1,9 @@
+
+language: python 
+
 jobs:
   allow_failures:
-     - language: python
+    - language: python
       python: 3.8
       script:
       - python -c "print('Hi from Python!')"
