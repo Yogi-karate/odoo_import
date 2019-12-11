@@ -1,8 +1,10 @@
 
 language: python 
+python: 
+- '3.7'
 
 jobs:
-  allow_failures:
+  include:
     - language: python
       python: 3.8
       script:
@@ -17,3 +19,6 @@ jobs:
       jdk: openjdk8
       script:
       - javac -help
+
+notifications:
+  slack: saboogroupworkspace:tco87KFtlVfRyVKhQoaEfKQn#smartdms-dev
