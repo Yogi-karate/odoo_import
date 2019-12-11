@@ -1,8 +1,8 @@
 jobs:
   include:
-  - language: python
-    python: 3.8
   - name: upload
+    language: python
+    python: 3.8
     install:
     - pip install -r ./upload/requirements.txt
     script:
