@@ -61,6 +61,7 @@ class Vehicle(Module):
         duplicate_list = odoo.execute_kw(self._name,'search_read',[[('name','in',vehicle_names)]],{'fields':['id','name']})
         result = {x['name']:x['id'] for x in duplicate_list}   
         for vehicle in vehicles:
+            vehicle.update({'state':'sold'})
             vehicle.update({'no_lot':True})    
             if result.get(vehicle.get('name')):
                 continue

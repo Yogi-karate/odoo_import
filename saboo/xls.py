@@ -507,6 +507,7 @@ class PricelistXLS(XLS):
 			model = model[:self.color_row.index.values[0]-1]
 			model.drop(model[model.isna().all(axis=1)==True].index.values)
 			model.iloc[:,:2] = model.iloc[:,:2].fillna(method='ffill').astype('str')
+			_logger.debug("The model created is ******* %s",model.head())
 			if model['Color-Variant'].isna().all():
 				model.loc[:,['Color-Variant']] = model.loc[:,['Color-Variant']].fillna('').astype('str')
 			else:
@@ -656,21 +657,22 @@ class PricelistXLS(XLS):
 			_logger.debug("The color array in get colors %s",col_array)
 			if col_array and len(col_array) >2:
 				#handle metallic and nonmetallic 
-				mcolors = col_array[1].strip().split(',')
+				mcolors = col_array[1].strip().upper().split(',')
 				if type(col_array[2].strip()) is str:
-					nonm = [col_array[2].strip()]
+					nonm = [col_array[2].upper().strip()]
 				else:
-					nonm = col_array[2].strip()
+					nonm = col_array[2].strip().upper()
 				return {'Metallic':mcolors[:len(mcolors)-1],'NonMetallic':nonm or False}
 			if col_array and len(col_array) ==1:
 				#handle colors for all variants
 				_logger.debug("The dict in get colors %s",{'Colors':col_array[0].strip().split(',')})
-				return {'Colors':col_array[0].strip().split(',')}
+				return {'Colors':col_array[0].strip().upper().split(',')}
 
 	def transform_variant_colors(self,model,colors):
 		c_model = pd.DataFrame()
 		for index in model.index.values:
 			row = model.loc[index:index,:].copy()
+			print("########^^^",row['Color-Variant'].values)
 			if  'Colors' in colors and not row['Color-Variant'].values[0]:
 				for color in colors['Colors']:
 					if color:
@@ -727,11 +729,11 @@ class PricelistXLS(XLS):
 			variants = model['Variant'].values
 			col_vars = model['Color-Variant'].values
 			var1_vars = model['Variant-1'].values
-			for index in range(len(variants)):
-				if col_vars[index]:
-					variants[index] = variants[index] + ' ('+col_vars[index]+')'
-				if var1_vars[index]:
-					variants[index] = var1_vars[index]+' '+variants[index]  
+			# for index in range(len(variants)):
+			# 	if col_vars[index]:
+			# 		variants[index] = variants[index] + ' ('+col_vars[index]+')'
+				# if var1_vars[index]:
+				# 	variants[index] = var1_vars[index]+' '+variants[index]  
 			_logger.debug(" the variants ---- %s",variants)
 			arr['COLOR'] = colors
 			arr['VARIANT'] = variants
