@@ -3,12 +3,16 @@ python:
 - '3.7'
 jobs:
   include:
+  - language: python
+    python: 3.8
   - name: upload
   install:
   - pip install -r ./upload/requirements.txt
   script:
   - echo "Hello before Zappa"
   - zappa update dev -s ./upload/flask_gateway.json
+  - language: python
+    python: 3.8
   - name: import
   install:
   - pip install -r ./odoo/import_requirements.txt
