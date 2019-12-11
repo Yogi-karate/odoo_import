@@ -1,6 +1,3 @@
-
-language: python 
-
 jobs:
   allow_failures:
      - language: python
