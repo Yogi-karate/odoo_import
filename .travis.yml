@@ -17,6 +17,3 @@ jobs:
       jdk: openjdk8
       script:
       - javac -help
-
-notifications:
-  slack: saboogroupworkspace:tco87KFtlVfRyVKhQoaEfKQn#smartdms-dev
