@@ -5,12 +5,20 @@ python:
 
 jobs:
   include:
-    - name: upload
-    script:
-    - echo "Hello before Zappa"
-    - name: import
-    script:
-    - echo "Hello before Zappa import"
+     - language: python
+      python: 3.8
+      script:
+      - python -c "print('Hi from Python!')"
+
+    - language: node_js
+      node_js: 12
+      script:
+      - node -e "console.log('Hi from NodeJS!')"
+
+    - language: java
+      jdk: openjdk8
+      script:
+      - javac -help
 
 notifications:
   slack: saboogroupworkspace:tco87KFtlVfRyVKhQoaEfKQn#smartdms-dev
