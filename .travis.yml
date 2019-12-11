@@ -3,9 +3,9 @@ jobs:
   - language: python
     python: 3.8
   - name: upload
-  install:
+    install:
     - pip install -r ./upload/requirements.txt
-  script:
+    script:
     - echo "Hello before Zappa"
     - zappa update dev -s ./upload/flask_gateway.json
 
