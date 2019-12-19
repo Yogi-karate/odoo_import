@@ -195,7 +195,7 @@ class ProductProduct(Module):
                 record['pos'] = pos
                 records.append(record)
                 ids.append(0)
-                pos +=1
+            pos +=1
         _logger.info(" Creating %s New products ",len(records))
         new_ids = self.model.create(records)
         for index in range(len(records)):
