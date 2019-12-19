@@ -657,7 +657,8 @@ class PricelistXLS(XLS):
 			_logger.debug("The color array in get colors %s",col_array)
 			if col_array and len(col_array) >2:
 				#handle metallic and nonmetallic 
-				mcolors = col_array[1].strip().upper().split(',')
+				mcolors = col_array[1].replace('\n',',').strip().upper().split(',')
+				_logger.debug("The colors created are %s and length %s",mcolors,len(mcolors))
 				if type(col_array[2].strip()) is str:
 					nonm = [col_array[2].upper().strip()]
 				else:
