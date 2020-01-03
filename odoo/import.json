@@ -21,7 +21,7 @@
         "delete_local_zip": true,
         "keep_warm": false,
         "memory_size": 1024,
-        "timeout_seconds": 180
+        "timeout_seconds": 720
     },
     "test": {
         "project_name": "import_odoo", 
@@ -45,7 +45,7 @@
         "delete_local_zip": true,
         "keep_warm": false,
         "memory_size": 1024,
-        "timeout_seconds": 180
+        "timeout_seconds": 720
     },
     "prod": {
         "project_name": "import_odoo", 
@@ -69,7 +69,7 @@
         "delete_local_zip": true,
         "keep_warm": false,
         "memory_size": 1024,
-        "timeout_seconds": 600
+        "timeout_seconds": 720
     },
 
     
