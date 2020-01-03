@@ -62,7 +62,7 @@ class Customer(Module):
         mobiles = [customer['mobile'] for customer in customers]
         duplicate_list = odoo.execute_kw(self._name,'search_read',[[('name','in',names)]],{'fields':['id','name','mobile']})
         if len(duplicate_list) > 0:
-            customer_cache = {x['name']:str(x['id'])+'_'+x['mobile'] for x in duplicate_list}
+            customer_cache = {x['name']:str(x['id'])+'_'+str(x['mobile']) for x in duplicate_list}
         duplicate_list = None
         for customer in customers:
             cust = customer_cache.get(customer.get('name'))

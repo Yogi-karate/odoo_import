@@ -170,7 +170,7 @@ class XLS(object):
 	def _validate(self):
 			sb = self.sb
 			errored = sb[sb['ORDERNO'].isna() | sb['NAME'].isna() | sb['CNAME'].isna() 
-							| sb['ORDERDATE'].isna() | sb.duplicated(['ORDERNO'],False)|sb.duplicated(['ENGINE'],False)] 
+							| sb['ORDERDATE'].isna() | sb.duplicated(['ORDERNO'],False) | sb.duplicated(['ENGINE'],False)| sb.duplicated(['CHASSIS'],False)]
 			if(len(errored.index)>0):
 				_logger.error("Sheet has %s invalid records at %s", str(len(errored.index)),errored.index.values)
 				self.sb = sb.drop(errored.index.values)
