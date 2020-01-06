@@ -57,13 +57,12 @@ class Vehicle(Module):
         veh_list = []
         sale_orders = self.get_order_ids(vehicles)
         #print("sale order cache",sale_orders)
-        vehicle_names = [vehicle['name'] for vehicle in vehicles]
+        vehicle_names = [vehicle['chassis_no'] for vehicle in vehicles]
         duplicate_list = odoo.execute_kw(self._name,'search_read',[[('name','in',vehicle_names)]],{'fields':['id','name']})
         result = {x['name']:x['id'] for x in duplicate_list}   
         for vehicle in vehicles:
-            vehicle.update({'state':'sold'})
             vehicle.update({'no_lot':True})    
-            if result.get(vehicle.get('name')):
+            if result.get(vehicle.get('chassis_no')):
                 continue
             else:
                 if vehicle['ref'] and vehicle['ref'] in sale_orders:

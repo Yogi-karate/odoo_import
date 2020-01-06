@@ -398,7 +398,7 @@ class XLS(object):
 	
 	def create_vehicles(self):
 		vehicle_df = pd.DataFrame()
-		vehicle_df[['name','chassis_no','ref','registration_no','product_id','partner_id']] = self.sb[['ENGINE','CHASSIS','ORDERNO','TRNO','External NAME','Customer/External ID']]
+		vehicle_df[['chassis_no','ref','registration_no','engine_no','product_id','partner_id']] = self.sb[['CHASSIS','ORDERNO','TRNO','ENGINE','External NAME','Customer/External ID']]
 		vehicle = modules.Vehicle(self.conf)
 		#print(vehicle_df.to_dict(orient = 'records'))
 		vehicle.create(vehicle_df.to_dict(orient = 'records'),None)
@@ -612,12 +612,12 @@ class PricelistXLS(XLS):
 
 	def execute(self,file_name = 'h1',company_id = 1,job_id = '5db168295e1e9f00115cd74b'):
 		pricelist_items = modules.PricelistItem(self.conf)
+		modules.User(self.conf).user_change_company(int(company_id))
 		pricelist_id = self.create_price_list(file_name,company_id)
 		_logger.debug("the pricelist created is %s ",pricelist_id)
 		result = []
 		status = 'success'
 		task = api.PriceListJobApi(self.conf)
-		modules.User(self.conf).user_change_company(int(company_id))
 		_logger.debug("The pricelist file with sheets %s read and number of sheets is  %s ",self.sb.keys(), str(len(self.sb.keys())))
 		for sheet in self.sb:
 			sheet_result = {'name':sheet,'status':'','values':''}
